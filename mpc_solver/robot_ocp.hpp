@@ -36,9 +36,18 @@ using Polynomial = polympc::Chebyshev<POLY_ORDER, polympc::GAUSS_LOBATTO, double
 using Approximation = polympc::Spline<Polynomial, NUM_SEG>;
 
 POLYMPC_FORWARD_DECLARATION(/*Name*/ minTime_ocp, /*NX*/ 14, /*NU*/ 7, /*NP*/ 1, /*ND*/ 0, /*NG*/ 8, /*TYPE*/ double)
+/*
+NX : Number of states
+NU : Number of inputs
+NP : Number of variable parameters
+ND : Number of static parameters
+NG : Number of constraints
+TYPE : scalar type
+*/
 
 using namespace Eigen;
 
+// This is the Problem definition !!! 
 class minTime_ocp : public ContinuousOCP<minTime_ocp, Approximation, SPARSE>{
 public:
 
@@ -49,7 +58,10 @@ public:
 
     void init(std::string urdf_path){
         pinocchio::urdf::buildModel(urdf_path, model);
+        //std::cout << "getFrameId before" << endl;
+        //frame_id = model.getFrameId("panda_tool");
         frame_id = model.getFrameId("panda_tool");
+        //std::cout << "getFrameId after" << endl;
     }
 
     template<typename T>
@@ -59,17 +71,21 @@ public:
     {
 
         // -------------- Differential equation ---------------------
-
+        // State vector is x = [pos, vel] in R^14
         // Position variation is joint velocity
-        xdot.head(7) = x.segment(7, 7);
+        //std::cout << "dynamics_impl" << std::endl;
+
+        xdot.head(7) = x.segment(7, 7); 
 
         // Joint velocity variation is input = acceleration
-        xdot.segment(7, 7) = u;
+        xdot.segment(7, 7) = u; 
 
         // Scaling dynamic with time parameter        
         xdot *= p(0);
         
         polympc::ignore_unused_var(t);
+
+        //std::cout << "dynamics_impl fin" << std::endl;
     }
 
 
@@ -79,6 +95,7 @@ public:
 
 EIGEN_STRONG_INLINE constraint_t<scalar_t> evalConstraints(const Ref<const state_t<scalar_t>> x, const Ref<const control_t<scalar_t>> u) const noexcept
 {
+    //std::cout << "constraint" << std::endl;
     Eigen::Matrix<double, 7, 1> q = x.head(7);
     Eigen::Matrix<double, 7, 1> q_dot = x.tail(7);
     Eigen::Matrix<double, 7, 1> q_dot_dot = u;
@@ -91,12 +108,19 @@ EIGEN_STRONG_INLINE constraint_t<scalar_t> evalConstraints(const Ref<const state
     ineq_constraint << pinocchio::rnea(model, data, q, q_dot, q_dot_dot),  data.oMf[frame_id].translation()[2];
 
     // std::cout << "----\n" << ineq_constraint.transpose() << "\n----\n";
+    //std::cout << "constraint fin" << std::endl;
 
     return ineq_constraint;
 }
-
+/*
+dynamics_impl
+dynamics_impl fin
+inequality_constraints_impl
+constraint ad scalar_t
+*/
 EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const state_t<ad_scalar_t>> x, const Ref<const control_t<ad_scalar_t>> u) const noexcept
 {
+    //std::cout << "constraint ad scalar_t" << std::endl;
     Eigen::Matrix<double, 7, 1> q;
     Eigen::Matrix<double, 7, 1> q_dot;
     Eigen::Matrix<double, 7, 1> q_dot_dot;
@@ -107,23 +131,28 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
         q_dot_dot(i) = u(i).value();
     }
     
-
     pinocchio::Data data(model);
+
 
     // Allocate result container
     Eigen::MatrixXd djoint_torque_dq = Eigen::MatrixXd::Zero(model.nv,model.nv);
     Eigen::MatrixXd djoint_torque_dv = Eigen::MatrixXd::Zero(model.nv,model.nv);
     Eigen::MatrixXd djoint_torque_da = Eigen::MatrixXd::Zero(model.nv,model.nv);
 
+
     pinocchio::computeRNEADerivatives(model, data, q, q_dot, q_dot_dot, djoint_torque_dq, djoint_torque_dv, djoint_torque_da);
+
 
     pinocchio::rnea(model, data, q, q_dot, q_dot_dot);
     pinocchio::crba(model, data, q);
     data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
 
+
     Eigen::MatrixXd djoint_torque_dtime_f = djoint_torque_dv*q_dot + djoint_torque_da*q_dot_dot;
 
+
     constraint_t<ad_scalar_t> ineq_constraint;
+
 
     // Fill in torque derivatives
     Eigen::Matrix<scalar_t, 1, NX + NU + NP> jac_row;
@@ -144,9 +173,20 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     // Fill in height derivative
     pinocchio::Data::Matrix6x J(6,7); J.setZero();
 
+    //std::cout << "DEBUT DU PROBLEME" << std::endl;
+
     pinocchio::forwardKinematics(model,data,q);
-    pinocchio::updateFramePlacement(model,data,frame_id);
+
+    //std::cout << "frame_id = " << frame_id << std::endl; // Output : 25
+
+    //pinocchio::updateFramePlacement(model,data,7);
+    pinocchio::updateFramePlacement(model,data,frame_id); // C'EST CETTE FONCTION QUI FAIT PLANTER
+
+    //std::cout << "B" << std::endl;
+
     pinocchio::computeFrameJacobian(model, data, q, frame_id, J);
+
+    //std::cout << "FIN DU PROBLEME" << std::endl;
 
     // For some reasons we should rotate the jacobian
     Eigen::MatrixXd rotateJacobian(6,6); rotateJacobian.setZero();
@@ -154,10 +194,14 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     rotateJacobian.block(3,3,3,3) = data.oMf[frame_id].rotation();
     J = rotateJacobian * J;
 
+    //std::cout << "K" << std::endl;
+
     ineq_constraint(NG-1).value() = data.oMf[frame_id].translation()[2];
     jac_row = Eigen::Matrix<scalar_t, 1, NX + NU + NP>::Zero();
     jac_row.head(7) = J.row(2);
     ineq_constraint(NG-1).derivatives() = jac_row;
+
+    //std::cout << "constraint ad scalar_t fin" << std::endl;
 
     return ineq_constraint;
 }
@@ -174,20 +218,11 @@ inequality_constraints_impl(const Ref<const state_t<T>> x, const Ref<const contr
                             const Ref<const parameter_t <T>> p, const Ref<const static_parameter_t> d,
                             const scalar_t &t, Ref<constraint_t < T>>g) const noexcept
 {
+    //std::cout << "inequality_constraints_impl" << std::endl;
     g = evalConstraints(x, u);
+    //std::cout << "inequality_constraints_impl fin" << std::endl;
 }
     
-
-
-
-
-
-
-
-
-
-
-
 
 
     template<typename T>
@@ -195,7 +230,9 @@ inequality_constraints_impl(const Ref<const state_t<T>> x, const Ref<const contr
                                    const Eigen::Ref<const parameter_t<T>> p, const Eigen::Ref<const static_parameter_t> d,
                                    const scalar_t &t, T &lagrange) noexcept
     {
+        //std::cout << "lagrange_term_impl" << std::endl;
         lagrange = (T)0.0;
+        //std::cout << "lagrange_term_impl fin" << std::endl;
     }
 
     template<typename T>
@@ -203,12 +240,14 @@ inequality_constraints_impl(const Ref<const state_t<T>> x, const Ref<const contr
                                 const Eigen::Ref<const parameter_t<T>> p, const Eigen::Ref<const static_parameter_t> d,
                                 const scalar_t &t, T &mayer) noexcept
     {   
+        //std::cout << "mayer_term_impl" << std::endl;
         mayer = p(0);
 
         // polympc::ignore_unused_var(x);
         polympc::ignore_unused_var(u);
         polympc::ignore_unused_var(d);
         polympc::ignore_unused_var(t);
+        //std::cout << "mayer_term_impl fin" << std::endl;
   
     }
 };

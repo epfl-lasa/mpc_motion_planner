@@ -12,7 +12,7 @@ MotionPlanner::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
     mpc.ocp().init(urdf_path);
 
     // Solver settings
-    mpc.settings().max_iter = 2; 
+    mpc.settings().max_iter = 20; //2; 
     mpc.qp_settings().max_iter = 700;
     mpc.settings().line_search_max_iter = 10;
     mpc.set_time_limits(0, 1);
@@ -86,7 +86,6 @@ void MotionPlanner::set_constraint_margins(double margin_position, double margin
     Matrix<double, 7, 1>::Map(input.max_velocity.data() ) = margin_velocity*robot.max_velocity;
     Matrix<double, 7, 1>::Map(input.max_acceleration.data() ) = margin_acceleration*robot.max_acceleration;
     Matrix<double, 7, 1>::Map(input.max_jerk.data() ) = margin_jerk*robot.max_jerk;
-
 }
 
 void MotionPlanner::set_min_height(double min_height){
@@ -96,7 +95,7 @@ void MotionPlanner::set_min_height(double min_height){
     mpc_t::constraint_t ubg; ubg <<  this->margin_torque_*robot.max_torque, inf;
     mpc.constraints_bounds(lbg, ubg);
 
-    std::cout << lbg.transpose() << std::endl;
+    //std::cout << lbg.transpose() << std::endl;
 }
 
 void MotionPlanner::sample_random_state(Matrix<double, 7, 1> &random_position, Matrix<double, 7, 1> &random_velocity){
@@ -172,6 +171,7 @@ void MotionPlanner::warm_start_RK(){
     mpc.x_guess(x_guess);	
     mpc.u_guess(u_guess);
     mpc.p_guess(p0); 
+
 }
 
 void MotionPlanner::solve_trajectory(bool use_ruckig_as_warm_start){
@@ -182,19 +182,21 @@ void MotionPlanner::solve_trajectory(bool use_ruckig_as_warm_start){
     auto start = std::chrono::system_clock::now();
 
     mpc.solve(); 
-    
+
     auto stop = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     double dT = duration.count()*1e-3;
 
     /** retrieve solution and statistics */
-    // std::cout << "MPC status: " << mpc.info().status.value << "\n";
-    // std::cout << "Num iterations: " << mpc.info().iter << "\n";
-    // std::cout << "Solve time: " << dT << " [ms] \n";
 
-    // std::cout << "Final time: " << mpc.solution_p().transpose() << std::endl;
-    // std::cout << "-------------\n";
+    /*
+    std::cout << "MPC status: " << mpc.info().status.value << "\n";
+    std::cout << "Num iterations: " << mpc.info().iter << "\n";
+    std::cout << "Solve time: " << dT << " [ms] \n";
 
+    std::cout << "Final time: " << mpc.solution_p().transpose() << std::endl;
+    std::cout << "-------------\n";
+    */
 
     // Fix initial and final point at correct place
     mpc_t::traj_state_t x_guess;
@@ -205,4 +207,7 @@ void MotionPlanner::solve_trajectory(bool use_ruckig_as_warm_start){
     mpc.x_guess(x_guess);	
     mpc.u_guess(mpc.solution_u());
     mpc.p_guess(mpc.solution_p());
+
 }
+
+

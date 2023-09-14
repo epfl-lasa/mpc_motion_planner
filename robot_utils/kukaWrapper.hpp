@@ -8,11 +8,11 @@
 #include "pinocchio/parsers/urdf.hpp"
 
 #define NDOF 7
-//#define EE_LINK_NAME "panda_tool"
+#define EE_LINK_NAME "grabber_link"
 
-class PandaWrapper {
+class KukaWrapper {
 
-    
+/*Maybe make a base robot class that each robot would inherit from ? */
     
   public:
 
@@ -20,7 +20,7 @@ class PandaWrapper {
     pinocchio::Data data;
     int frame_id;
 
-    PandaWrapper(std::string urdf_path);
+    KukaWrapper(std::string urdf_path);
     Eigen::Matrix<double, NDOF, 1> inverse_kinematic(Eigen::Matrix3d orientation, Eigen::Vector3d position);
     Eigen::Matrix<double, NDOF, 1> inverse_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity);
     Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot);
@@ -41,4 +41,3 @@ class PandaWrapper {
     double min_height {0.05};
     
 };
-

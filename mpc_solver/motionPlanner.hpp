@@ -2,8 +2,13 @@
 #include <fstream>
 #include "robot_ocp.hpp"
 #include "polympc_redef.hpp" 
+#include <pybind11/pybind11.h>
+#include <pybind11/eigen.h> 
 
 #include "pandaWrapper.hpp"
+#include "kukaWrapper.hpp"
+#include "kuka7Wrapper.hpp"
+#include "armRobotWrapper.hpp"
 
 #include <ruckig/ruckig.hpp>
 
@@ -29,7 +34,19 @@ class MotionPlanner{
         mpc_t mpc;
 
         // Utility class wrapping pinocchio
+        //KukaWrapper robot; // Or use PandaWrapper
         PandaWrapper robot;
+
+
+        //ArmRobotWrapper* robotAdd;
+        //Kuka7Wrapper robot;
+        /***********************************************|
+        *                                               *
+        *                                               *
+        * CHANGE THE ROBOT CLASS TO USE ANOTHER ROBOT   *
+        *                                               *
+        *                                               *
+        |***********************************************/
 
         // Ruckig as warm start
         Ruckig<NDOF> otg;
@@ -115,6 +132,43 @@ class MotionPlanner{
             time *= mpc.solution_p()[0];
         }
 
+        // Wrapper for the templated function that returns a tuple of matrices
+        template<const int N>
+        std::tuple<Eigen::Matrix<double, 1, N+1>, Eigen::Matrix<double, 7, N+1>, Eigen::Matrix<double, 7, N+1>, 
+                    Eigen::Matrix<double, 7, N+1>, Eigen::Matrix<double, 7, N+1>> get_MPC_trajectory_wrapper() {
+        
+            Eigen::Matrix<double, 1, N+1> time;
+            Eigen::Matrix<double, 7, N+1> position_trajectory;
+            Eigen::Matrix<double, 7, N+1> velocity_trajectory;
+            Eigen::Matrix<double, 7, N+1> acceleration_trajectory;
+            Eigen::Matrix<double, 7, N+1> torque_trajectory;
+           
+            get_MPC_trajectory<N>(time, position_trajectory, velocity_trajectory, acceleration_trajectory, torque_trajectory);
+            return std::make_tuple(time, position_trajectory, velocity_trajectory, acceleration_trajectory, torque_trajectory);
+        }
+
+
+        template<const int N>
+        std::tuple<Eigen::Matrix<double, 1, N+1>, Eigen::Matrix<double, 7, N+1>, Eigen::Matrix<double, 7, N+1>, 
+                    Eigen::Matrix<double, 7, N+1>, Eigen::Matrix<double, 7, N+1>> get_ruckig_trajectory_wrapper() {
+
+            Eigen::Matrix<double, 1, N+1> time;
+            Eigen::Matrix<double, 7, N+1> position_trajectory;
+            Eigen::Matrix<double, 7, N+1> velocity_trajectory;
+            Eigen::Matrix<double, 7, N+1> acceleration_trajectory;
+            Eigen::Matrix<double, 7, N+1> torque_trajectory;
+
+            get_ruckig_trajectory<N>(time, position_trajectory, velocity_trajectory, acceleration_trajectory, torque_trajectory);
+            return std::make_tuple(time, position_trajectory, velocity_trajectory, acceleration_trajectory, torque_trajectory);
+        }
+
+        std::tuple<int, int> get_mpc_info(){
+            int status; status = (int) mpc.info().status.value;
+            int numIter; numIter = (int) mpc.info().iter;
+
+            return std::make_tuple(status, numIter);
+        }
+
         void get_MPC_point(double time, Matrix<double, 7, 1> &position, Matrix<double, 7, 1> &velocity, Matrix<double, 7, 1> &acceleration, Matrix<double, 7, 1> &torque){
             
             if (time < mpc.solution_p()[0]) time /= mpc.solution_p()[0];
@@ -174,3 +228,46 @@ class MotionPlanner{
 
         
 };
+
+/*namespace py = pybind11;
+
+PYBIND11_MODULE(motion_planning_lib, m) {
+    py::class_<MotionPlanner>(m, "MotionPlanner")
+        .def(py::init<std::string>())
+        
+        .def("set_target_state", [](MotionPlanner &instance, py::array_t<double> target_position, py::array_t<double> target_velocity, py::array_t<double> target_acceleration) {
+            Eigen::Map<Eigen::VectorXd> pos(target_position.mutable_data(), target_position.size());
+            Eigen::Map<Eigen::VectorXd> vel(target_velocity.mutable_data(), target_velocity.size());
+            Eigen::Map<Eigen::VectorXd> acc(target_acceleration.mutable_data(), target_acceleration.size());
+            instance.set_target_state(pos, vel, acc);
+        })
+
+        .def("set_current_state", [](MotionPlanner &instance, py::array_t<double> current_position, py::array_t<double> current_velocity, py::array_t<double> current_acceleration) {
+            Eigen::Map<Eigen::VectorXd> pos(current_position.mutable_data(), current_position.size());
+            Eigen::Map<Eigen::VectorXd> vel(current_velocity.mutable_data(), current_velocity.size());
+            Eigen::Map<Eigen::VectorXd> acc(current_acceleration.mutable_data(), current_acceleration.size());
+            instance.set_current_state(pos, vel, acc);
+        })
+
+        .def("set_constraint_margins", &MotionPlanner::set_constraint_margins)
+        .def("set_min_height", &MotionPlanner::set_min_height)
+        .def("check_state_in_bounds", &MotionPlanner::check_state_in_bounds)
+        .def("solve_trajectory", &MotionPlanner::solve_trajectory);
+}*/
+
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(motion_planning_lib, m) {
+    py::class_<MotionPlanner>(m, "MotionPlanner")
+        .def(py::init<std::string>())
+        .def("set_target_state", &MotionPlanner::set_target_state)
+        .def("set_current_state", &MotionPlanner::set_current_state)
+        .def("set_constraint_margins", &MotionPlanner::set_constraint_margins)
+        .def("set_min_height", &MotionPlanner::set_min_height)
+        .def("check_state_in_bounds", &MotionPlanner::check_state_in_bounds)
+        .def("solve_trajectory", &MotionPlanner::solve_trajectory)
+        .def("get_mpc_info", &MotionPlanner::get_mpc_info)
+        .def("get_ruckig_trajectory", &MotionPlanner::get_ruckig_trajectory_wrapper<100>)
+        .def("get_MPC_trajectory", &MotionPlanner::get_MPC_trajectory_wrapper<100>);
+}
