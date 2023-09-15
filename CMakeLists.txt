@@ -3,7 +3,7 @@ project(mpc_motion_planner_examples VERSION 0.1.0)
 
 set(CMAKE_BUILD_TYPE Release)
 
-add_subdirectory(pybind11)
+add_subdirectory(submodules/pybind11)
 add_subdirectory(mpc_solver)
 
 # Using motionPlannerLib for linking with executables
