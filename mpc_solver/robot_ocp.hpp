@@ -56,11 +56,12 @@ public:
 
     pinocchio::Model model;
 
-    void init(std::string urdf_path){
+    void init(std::string urdf_path, std::string ee_link_name){
+        std::cout << ee_link_name << std::endl;
         pinocchio::urdf::buildModel(urdf_path, model);
         //std::cout << "getFrameId before" << endl;
         //frame_id = model.getFrameId("panda_tool");
-        frame_id = model.getFrameId("panda_tool");
+        frame_id = model.getFrameId(ee_link_name);
         //std::cout << "getFrameId after" << endl;
     }
 
@@ -139,11 +140,13 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     Eigen::MatrixXd djoint_torque_dv = Eigen::MatrixXd::Zero(model.nv,model.nv);
     Eigen::MatrixXd djoint_torque_da = Eigen::MatrixXd::Zero(model.nv,model.nv);
 
-
+    // Recursive Newton Euler Algorithm to compute derivatives
     pinocchio::computeRNEADerivatives(model, data, q, q_dot, q_dot_dot, djoint_torque_dq, djoint_torque_dv, djoint_torque_da);
 
-
+    // Compute inverse dynamic : Torque to reach q, q_dot, q_ddot
     pinocchio::rnea(model, data, q, q_dot, q_dot_dot);
+
+    // Composite Rigid Body Algorithm : Computes the upper triangular part of the joint space inertia matrix
     pinocchio::crba(model, data, q);
     data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
 
@@ -160,9 +163,9 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     for(int i = 0; i < NG-1; i++)
     {   
         // Overwitting with PINOCCHIO data
-        jac_row.head(7) = djoint_torque_dq.row(i);
-        jac_row.segment(7, 7) = djoint_torque_dv.row(i);
-        jac_row.segment(14, 7) = data.M.row(i);
+        jac_row.head(7) = djoint_torque_dq.row(i); // Replace the first 7 elements
+        jac_row.segment(7, 7) = djoint_torque_dv.row(i); // Replace 7 elements, starting at pos 7
+        jac_row.segment(14, 7) = data.M.row(i); // Replace 7 elements, starting from at pos 14
 
         jac_row(21) = djoint_torque_dtime_f(i);
 

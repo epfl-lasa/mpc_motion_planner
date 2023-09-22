@@ -5,9 +5,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h> 
 
+
 #include "pandaWrapper.hpp"
-#include "kukaWrapper.hpp"
 #include "kuka7Wrapper.hpp"
+#include "kuka14Wrapper.hpp"
 #include "armRobotWrapper.hpp"
 
 #include <ruckig/ruckig.hpp>
@@ -18,7 +19,8 @@ using admm = boxADMM<minTime_ocp::VAR_SIZE, minTime_ocp::NUM_EQ + minTime_ocp::N
 using namespace Eigen;
 using namespace ruckig;
 
-class MotionPlanner{
+template <typename RobotWrapper>
+class MotionPlanner {
 
     private:
 
@@ -32,21 +34,10 @@ class MotionPlanner{
         // PolyMPC solver
         using mpc_t = MPC<minTime_ocp, MySolver, admm>;
         mpc_t mpc;
-
-        // Utility class wrapping pinocchio
-        //KukaWrapper robot; // Or use PandaWrapper
-        PandaWrapper robot;
-
-
-        //ArmRobotWrapper* robotAdd;
-        //Kuka7Wrapper robot;
-        /***********************************************|
-        *                                               *
-        *                                               *
-        * CHANGE THE ROBOT CLASS TO USE ANOTHER ROBOT   *
-        *                                               *
-        *                                               *
-        |***********************************************/
+        
+        //using robot_t = ArmRobotWrapper<RobotWrapper>;
+        using robot_t = RobotWrapper;
+        robot_t robot;
 
         // Ruckig as warm start
         Ruckig<NDOF> otg;
@@ -259,15 +250,40 @@ PYBIND11_MODULE(motion_planning_lib, m) {
 namespace py = pybind11;
 
 PYBIND11_MODULE(motion_planning_lib, m) {
-    py::class_<MotionPlanner>(m, "MotionPlanner")
+    py::class_<MotionPlanner<PandaWrapper>>(m, "PandaMotionPlanner")
         .def(py::init<std::string>())
-        .def("set_target_state", &MotionPlanner::set_target_state)
-        .def("set_current_state", &MotionPlanner::set_current_state)
-        .def("set_constraint_margins", &MotionPlanner::set_constraint_margins)
-        .def("set_min_height", &MotionPlanner::set_min_height)
-        .def("check_state_in_bounds", &MotionPlanner::check_state_in_bounds)
-        .def("solve_trajectory", &MotionPlanner::solve_trajectory)
-        .def("get_mpc_info", &MotionPlanner::get_mpc_info)
-        .def("get_ruckig_trajectory", &MotionPlanner::get_ruckig_trajectory_wrapper<100>)
-        .def("get_MPC_trajectory", &MotionPlanner::get_MPC_trajectory_wrapper<100>);
+        .def("set_target_state", &MotionPlanner<PandaWrapper>::set_target_state)
+        .def("set_current_state", &MotionPlanner<PandaWrapper>::set_current_state)
+        .def("set_constraint_margins", &MotionPlanner<PandaWrapper>::set_constraint_margins)
+        .def("set_min_height", &MotionPlanner<PandaWrapper>::set_min_height)
+        .def("check_state_in_bounds", &MotionPlanner<PandaWrapper>::check_state_in_bounds)
+        .def("solve_trajectory", &MotionPlanner<PandaWrapper>::solve_trajectory)
+        .def("get_mpc_info", &MotionPlanner<PandaWrapper>::get_mpc_info)
+        .def("get_ruckig_trajectory", &MotionPlanner<PandaWrapper>::get_ruckig_trajectory_wrapper<100>)
+        .def("get_MPC_trajectory", &MotionPlanner<PandaWrapper>::get_MPC_trajectory_wrapper<100>);
+
+    py::class_<MotionPlanner<Kuka7Wrapper>>(m, "Kuka7MotionPlanner")
+        .def(py::init<std::string>())
+        .def("set_target_state", &MotionPlanner<Kuka7Wrapper>::set_target_state)
+        .def("set_current_state", &MotionPlanner<Kuka7Wrapper>::set_current_state)
+        .def("set_constraint_margins", &MotionPlanner<Kuka7Wrapper>::set_constraint_margins)
+        .def("set_min_height", &MotionPlanner<Kuka7Wrapper>::set_min_height)
+        .def("check_state_in_bounds", &MotionPlanner<Kuka7Wrapper>::check_state_in_bounds)
+        .def("solve_trajectory", &MotionPlanner<Kuka7Wrapper>::solve_trajectory)
+        .def("get_mpc_info", &MotionPlanner<Kuka7Wrapper>::get_mpc_info)
+        .def("get_ruckig_trajectory", &MotionPlanner<Kuka7Wrapper>::get_ruckig_trajectory_wrapper<100>)
+        .def("get_MPC_trajectory", &MotionPlanner<Kuka7Wrapper>::get_MPC_trajectory_wrapper<100>);
+
+
+    py::class_<MotionPlanner<Kuka14Wrapper>>(m, "Kuka14MotionPlanner")
+        .def(py::init<std::string>())
+        .def("set_target_state", &MotionPlanner<Kuka14Wrapper>::set_target_state)
+        .def("set_current_state", &MotionPlanner<Kuka14Wrapper>::set_current_state)
+        .def("set_constraint_margins", &MotionPlanner<Kuka14Wrapper>::set_constraint_margins)
+        .def("set_min_height", &MotionPlanner<Kuka14Wrapper>::set_min_height)
+        .def("check_state_in_bounds", &MotionPlanner<Kuka14Wrapper>::check_state_in_bounds)
+        .def("solve_trajectory", &MotionPlanner<Kuka14Wrapper>::solve_trajectory)
+        .def("get_mpc_info", &MotionPlanner<Kuka14Wrapper>::get_mpc_info)
+        .def("get_ruckig_trajectory", &MotionPlanner<Kuka14Wrapper>::get_ruckig_trajectory_wrapper<100>)
+        .def("get_MPC_trajectory", &MotionPlanner<Kuka14Wrapper>::get_MPC_trajectory_wrapper<100>);
 }

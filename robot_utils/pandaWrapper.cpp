@@ -1,4 +1,4 @@
-#include "pandaWrapper.hpp"
+/*#include "pandaWrapper.hpp"
 
 PandaWrapper::PandaWrapper(std::string urdf_path){
 
@@ -104,4 +104,4 @@ Eigen::Matrix<double, 6, 1> PandaWrapper::forward_velocities(Eigen::Matrix<doubl
     Eigen::Matrix<double, 6, 1> task_velocity = J*qdot;
 
     return task_velocity;
-}
+}*/

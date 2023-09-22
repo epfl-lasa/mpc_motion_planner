@@ -7,9 +7,9 @@ add_subdirectory(submodules/pybind11)
 add_subdirectory(mpc_solver)
 
 # Using motionPlannerLib for linking with executables
-add_executable(mpc_benchmark examples/benchmark.cpp)
-target_link_libraries(mpc_benchmark PUBLIC motionPlannerLib)
+# add_executable(mpc_benchmark examples/benchmark.cpp)
+# target_link_libraries(mpc_benchmark PUBLIC motionPlannerLib)
 
-add_executable(offline_trajectory examples/offline_trajectory.cpp)
-target_link_libraries(offline_trajectory PUBLIC motionPlannerLib)
+# add_executable(offline_trajectory examples/offline_trajectory.cpp)
+#target_link_libraries(offline_trajectory PUBLIC motionPlannerLib)
 

@@ -1,6 +1,7 @@
 #include "motionPlanner.hpp"
 
-MotionPlanner::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
+template <typename RobotWrapper>
+MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
 
     Matrix<double, NDOF, 1> default_position = (robot.max_position.array() + robot.min_position.array())/2;
 
@@ -9,7 +10,8 @@ MotionPlanner::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
 
     // ---------- PolyMPC setup ---------- //
     
-    mpc.ocp().init(urdf_path);
+    std::cout << "link name in Motion planner constructor" << robot.ee_link_name << std::endl;
+    mpc.ocp().init(urdf_path, robot.ee_link_name);
 
     // Solver settings
     mpc.settings().max_iter = 20; //2; 
@@ -24,7 +26,8 @@ MotionPlanner::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
     set_constraint_margins(1.0, 1.0, 1.0, 1.0, 1.0);
 }
 
-void MotionPlanner::set_target_state(Matrix<double, NDOF, 1> target_position, Matrix<double, NDOF, 1> target_velocity, Matrix<double, NDOF, 1> target_acceleration){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_target_state(Matrix<double, NDOF, 1> target_position, Matrix<double, NDOF, 1> target_velocity, Matrix<double, NDOF, 1> target_acceleration){
 
     // Update MPC constraints
     target_state.head(7) = target_position;
@@ -38,7 +41,8 @@ void MotionPlanner::set_target_state(Matrix<double, NDOF, 1> target_position, Ma
     Matrix<double, 7, 1>::Map(input.target_acceleration.data() ) = target_acceleration;
 }
 
-void MotionPlanner::set_current_state(Matrix<double, NDOF, 1> current_position, Matrix<double, NDOF, 1> current_velocity, Matrix<double, NDOF, 1> current_acceleration){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_current_state(Matrix<double, NDOF, 1> current_position, Matrix<double, NDOF, 1> current_velocity, Matrix<double, NDOF, 1> current_acceleration){
     
     // Update MPC constraints
     current_state.head(7) = current_position;
@@ -53,7 +57,8 @@ void MotionPlanner::set_current_state(Matrix<double, NDOF, 1> current_position, 
     // std::cout << 'setting acc ' << current_acceleration.transpose() << std::endl; ;
 }
 
-void MotionPlanner::set_constraint_margins(double margin_position, double margin_velocity, double margin_acceleration, double margin_torque, double margin_jerk){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_constraint_margins(double margin_position, double margin_velocity, double margin_acceleration, double margin_torque, double margin_jerk){
 
     // Save margins
     this->margin_position_ = margin_position;
@@ -88,7 +93,8 @@ void MotionPlanner::set_constraint_margins(double margin_position, double margin
     Matrix<double, 7, 1>::Map(input.max_jerk.data() ) = margin_jerk*robot.max_jerk;
 }
 
-void MotionPlanner::set_min_height(double min_height){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_min_height(double min_height){
 
     // Non-linear torque constraints + height constraint
     mpc_t::constraint_t lbg; lbg << -this->margin_torque_*robot.max_torque, min_height;
@@ -98,7 +104,8 @@ void MotionPlanner::set_min_height(double min_height){
     //std::cout << lbg.transpose() << std::endl;
 }
 
-void MotionPlanner::sample_random_state(Matrix<double, 7, 1> &random_position, Matrix<double, 7, 1> &random_velocity){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::sample_random_state(Matrix<double, 7, 1> &random_position, Matrix<double, 7, 1> &random_velocity){
     
     Matrix<double, 7, 1> safety_range_position = (1-margin_position_)*(robot.max_position.array() - robot.min_position.array())/2;
 
@@ -112,7 +119,8 @@ void MotionPlanner::sample_random_state(Matrix<double, 7, 1> &random_position, M
     random_velocity = margin_velocity_*Matrix<double, 7, 1>::Random().array()*robot.max_velocity.array();
 }
 
-int MotionPlanner::check_state_in_bounds(Matrix<double, 7, 1> &position, Matrix<double, 7, 1> &velocity, Matrix<double, 7, 1> acceleration){
+template <typename RobotWrapper>
+int MotionPlanner<RobotWrapper>::check_state_in_bounds(Matrix<double, 7, 1> &position, Matrix<double, 7, 1> &velocity, Matrix<double, 7, 1> acceleration){
 
     Matrix<double, 7, 1> safety_range_position = (1-margin_position_)*(robot.max_position.array() - robot.min_position.array())/2;
 
@@ -142,7 +150,8 @@ int MotionPlanner::check_state_in_bounds(Matrix<double, 7, 1> &position, Matrix<
     return check_flag;
 }
 
-void MotionPlanner::warm_start_RK(){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::warm_start_RK(){
 
     // Compute Ruckig trajectory in an offline manner (outside of the control loop)
     Result result = otg.calculate(input, trajectory);
@@ -174,7 +183,8 @@ void MotionPlanner::warm_start_RK(){
 
 }
 
-void MotionPlanner::solve_trajectory(bool use_ruckig_as_warm_start){
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start){
 
      // Warm start with ruckig if needed
     if (use_ruckig_as_warm_start) warm_start_RK();
@@ -210,4 +220,7 @@ void MotionPlanner::solve_trajectory(bool use_ruckig_as_warm_start){
 
 }
 
+template class MotionPlanner<PandaWrapper>;
+template class MotionPlanner<Kuka7Wrapper>;
+template class MotionPlanner<Kuka14Wrapper>;
 

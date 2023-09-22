@@ -6,16 +6,26 @@ from pathlib import Path
 from scipy.interpolate import interp1d
 import time, enum, pybullet_data
 from plot_utils import save_trajectory, plot_trajectory
-from descriptions.robot_descriptions.franka_panda_bullet.franka_panda import *
 
 #--------------------------------------------------------------------------------#
-
+NB_TRAJ = 1
+ROBOT_MODEL = "PANDA"
 SIM_FREQ = 50
 ACTION_REPEAT = 20
-ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda.urdf"
-MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda_arm.urdf" # THIS ONE IS USED ON THE REAL ROBOT
-#ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa7.urdf" #/panda.urdf"
-#MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa7.urdf" # THIS ONE IS USED ON THE REAL ROBOT
+CONS_MARGINS = [0.85, 0.8, 0.1, 0.9, 0.05]
+
+if ROBOT_MODEL=="PANDA":
+    ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda.urdf"
+    MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda_arm.urdf" # THIS ONE IS USED ON THE REAL ROBOT
+    from descriptions.robot_descriptions.franka_panda_bullet.franka_panda import *
+elif ROBOT_MODEL=="KUKA7":
+    ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa7.urdf" #/panda.urdf"
+    MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa7.urdf" # THIS ONE IS USED ON THE REAL ROBOT
+    from descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 import *
+elif ROBOT_MODEL=="KUKA14":
+    ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa14.urdf" #/panda.urdf"
+    MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa14.urdf" # THIS ONE IS USED ON THE REAL ROBOT
+    from descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_14 import *
 
 #--------------------------------------------------------------------------------#
 
@@ -24,7 +34,7 @@ class CONTROL_MODE(enum.Enum):
     TORQUE=2
     POSITION_VELOCITY=3
 
-DEFAULT_CONTROL_MODE = CONTROL_MODE.POSITION_VELOCITY 
+DEFAULT_CONTROL_MODE = CONTROL_MODE.POSITION_VELOCITY
 
 #--------------------------------------------------------------------------------#
 
@@ -55,8 +65,13 @@ def setup_pybullet(robot_urdf_path, gui=True):
 
 #--------------------------------------------------------------------------------#
 
-def setup_motion_planner(robot_urdf_path, q0, q0_dot=None, q0_ddot=None, cons_margins=[0.85, 0.8, 0.1, 0.9, 0.05], min_height=0.):
-    mpc_planner = mpl.MotionPlanner(robot_urdf_path)
+def setup_motion_planner(robot_urdf_path, robotModel, q0, q0_dot=None, q0_ddot=None, cons_margins=CONS_MARGINS, min_height=0.):
+    if robotModel=="PANDA":
+        mpc_planner = mpl.PandaMotionPlanner(robot_urdf_path)
+    elif robotModel=="KUKA7":
+        mpc_planner = mpl.Kuka7MotionPlanner(robot_urdf_path)
+    elif robotModel=="KUKA14":
+        mpc_planner = mpl.Kuka14MotionPlanner(robot_urdf_path)
 
     if q0_dot is None:
         q0_dot = np.zeros_like(q0)
@@ -90,43 +105,67 @@ def apply_action(p, robotId, action, control_mode=DEFAULT_CONTROL_MODE):
 
 #--------------------------------------------------------------------------------#
 
-def get_trajectory(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, get_time_to_solve=False):
-    planner.set_current_state(*x)
-    planner.set_target_state(*xd)
-    start = time.time()
-    planner.solve_trajectory(ruckig_as_ws)
-    time_to_solve = time.time() - start
+def get_trajectory(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, get_time_to_solve=False, cons_margins=CONS_MARGINS):
+    assert x[0].size == xd[0].size
+    if not(isinstance(x, list)): # transform x, xd into list if not already
+        x = [x]
+        xd = [xd]
 
-    if from_ruckig:
-        t, q, q_dot, q_ddot, tau = planner.get_ruckig_trajectory()
-    else:
-        t, q, q_dot, q_ddot, tau = planner.get_MPC_trajectory()
+    traj = []
+    for i in range(len(x)):
+        
+        planner.set_current_state(*x[i])
+        planner.set_target_state(*xd[i])
+        start = time.time()
+        planner.solve_trajectory(ruckig_as_ws)
+        time_to_solve = time.time() - start
+
+        if from_ruckig:
+            #t, q, q_dot, q_ddot, tau = planner.get_ruckig_trajectory()
+            traj_i = planner.get_ruckig_trajectory()
+        else:
+            #t, q, q_dot, q_ddot, tau = planner.get_MPC_trajectory()
+            traj_i = planner.get_MPC_trajectory()
+
+        traj.append(traj_i)    
     
-    if np.sum(np.abs(tau)) < 1e-9:
-        raise ValueError("MPC DIDN'T CONVERGED")
-    
+    if len(traj) == 1:
+        traj = traj[0]
+
     if get_time_to_solve:
-        return time_to_solve, (t, q, q_dot, q_ddot, tau)
+        return time_to_solve, traj #(t, q, q_dot, q_ddot, tau)
     else:
-        return (t, q, q_dot, q_ddot, tau) # ( t, q(t), q_dot(t), q_ddot(t), tau(t) )
+        return traj #(t, q, q_dot, q_ddot, tau) # ( t, q(t), q_dot(t), q_ddot(t), tau(t) )
 
 #--------------------------------------------------------------------------------#
 
 def get_action(planner, x, xd, ruckig_as_ws=True, control_mode=DEFAULT_CONTROL_MODE):
-    t, q, q_dot, q_ddot, tau = get_trajectory(planner, x, xd, ruckig_as_ws=ruckig_as_ws)
-    
+    # t, q, q_dot, q_ddot, tau = get_trajectory(planner, x, xd, ruckig_as_ws=ruckig_as_ws)
+    traj = get_trajectory(planner, x, xd, ruckig_as_ws=ruckig_as_ws)
+
+    if not(isinstance(traj, list)):
+        traj = [traj]
+
+    f, f1, f2 = [], [], [] # Interplation loop
+    for traj_i in traj:
+        t_i, q_i, q_dot_i, _, tau_i = traj_i
+        if control_mode==CONTROL_MODE.POSITION:
+            f.append(interp1d(t_i, q_i, bounds_error=False, kind='cubic'))
+        elif control_mode==CONTROL_MODE.TORQUE:
+            f.append(interp1d(t_i, tau_i, bounds_error=False, kind='cubic'))
+        elif control_mode==CONTROL_MODE.POSITION_VELOCITY:
+            f1.append(interp1d(t_i, q_i, bounds_error=False, kind='cubic'))
+            f2.append(interp1d(t_i, q_dot_i, bounds_error=False, kind='cubic'))
+        else:
+            raise ValueError("Control mode not implemented yet")
+        
+    # Return list of interpolations
     if control_mode==CONTROL_MODE.POSITION:
-        f = interp1d(t, q, bounds_error=False, kind='cubic')
         return f(1/SIM_FREQ)
     elif control_mode==CONTROL_MODE.TORQUE:
-        f = interp1d(t, tau, bounds_error=False, kind='cubic')
         return f(1/SIM_FREQ)
     elif control_mode==CONTROL_MODE.POSITION_VELOCITY:
-        f1 = interp1d(t, q, bounds_error=False, kind='cubic')
-        f2 = interp1d(t, q_dot, bounds_error=False, kind='cubic')
         return (f1(1/SIM_FREQ), f2(1/SIM_FREQ)) # return a tupple of (qd, qd_dot)
-    else:
-        raise ValueError("Control mode not implemented yet")
 
 #--------------------------------------------------------------------------------#
 
@@ -135,16 +174,37 @@ def check_constraints(planner):
 
 #--------------------------------------------------------------------------------#
 
-def get_interp_action(planner, x, xd, ruckig_as_ws=True, control_mode=DEFAULT_CONTROL_MODE):
-    t, q, q_dot, q_ddot, tau = get_trajectory(planner, x, xd, ruckig_as_ws=ruckig_as_ws)
-    save_trajectory((t, q, q_dot, q_ddot, tau))
+def get_interp_action(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, control_mode=DEFAULT_CONTROL_MODE):
+    traj = get_trajectory(planner, x, xd, from_ruckig=from_ruckig, ruckig_as_ws=ruckig_as_ws)
+
+    if not(isinstance(traj, list)):
+        traj = [traj]
+
+    f, f1, f2 = [], [], []
+    for traj_i in traj:
+        t_i, q_i, q_dot_i, _, tau_i = traj_i
+        if control_mode==CONTROL_MODE.POSITION:
+            f.append(interp1d(t_i, q_i, bounds_error=False, kind='cubic', fill_value=q_i[:, -1]))
+        elif control_mode==CONTROL_MODE.TORQUE:
+            f.append(interp1d(t_i, tau_i, bounds_error=False, kind='cubic', fill_value=tau_i[:, -1]))
+        elif control_mode==CONTROL_MODE.POSITION_VELOCITY:
+            f1.append(interp1d(t_i, q_i, bounds_error=False, kind='cubic', fill_value=q_i[:, -1]))
+            f2.append(interp1d(t_i, q_dot_i, bounds_error=False, kind='cubic', fill_value=q_dot_i[:, -1]))
+
+    # Return interpolation functions
     if control_mode==CONTROL_MODE.POSITION:
-        return interp1d(t, q, bounds_error=False, kind='cubic', fill_value=q[:, -1])
+        if len(f) == 1:
+            f = f[0]
+        return f
     elif control_mode==CONTROL_MODE.TORQUE:
-        return interp1d(t, tau, bounds_error=False, kind='cubic', fill_value=tau[:, -1]),
+        if len(f) == 1:
+            f = f[0]
+        return f
     elif control_mode==CONTROL_MODE.POSITION_VELOCITY:
-        return (interp1d(t, q, bounds_error=False, kind='cubic', fill_value=q[:, -1]), 
-                interp1d(t, q_dot, bounds_error=False, kind='cubic', fill_value=q_dot[:, -1]))#, fill_value=q_dot[:, -1])) # return a tupple of (qd, qd_dot)
+        if len(f1) == 1:
+            f1 = f1[0]
+            f2 = f2[0]
+        return (f1, f2) #, fill_value=q_dot[:, -1])) # return a tupple of (qd, qd_dot)
     else:
         raise ValueError("Control mode not implemented yet")
 
@@ -175,8 +235,7 @@ def step(p, robotId, action, control_mode=DEFAULT_CONTROL_MODE):
 
 if __name__ == "__main__":
     # initial joint position
-    q0 = np.array(
-        [-0.61671491, -1.0231266, -1.58928031, -2.25938556, -1.15041877, 1.92997337, 0.03300055])  # 0.5*(ul+ll)
+    q0 =  0.5*(ul+ll) # np.array([-0.61671491, -1.0231266, -1.58928031, -2.25938556, -1.15041877, 1.92997337, 0.03300055]) 
     q0_dot = np.zeros(NDOF)
     q0_ddot = np.zeros(NDOF)
     g = -9.81
@@ -187,11 +246,13 @@ if __name__ == "__main__":
     #apply_action(p, robotId, q0, control_mode=CONTROL_MODE.POSITION)
     
     # Initialize mpc planner
-    mpc_planner = setup_motion_planner(MPC_ROBOT_URDF_PATH, q0, q0_dot)
+    mpc_planner = setup_motion_planner(MPC_ROBOT_URDF_PATH, ROBOT_MODEL, q0, q0_dot)
     time.sleep(1)
 
     # sample target point
     qd = (ul - ll) * random.sample(NDOF) + ll
+    #qd = 0.9 * ul + 0.1 * ll
+    
     qd_dot = np.zeros(NDOF)
     qd_ddot = np.zeros(NDOF)
 
@@ -210,40 +271,51 @@ if __name__ == "__main__":
     q_ddot_full_traj = []
     tau_full_traj = []
 
-    action = get_interp_action(mpc_planner, x_i, xd, control_mode=DEFAULT_CONTROL_MODE, ruckig_as_ws=True)
-    status, nb_iter = mpc_planner.get_mpc_info()
-    print("status : {} | nb iter : {}".format(status, nb_iter))
-    time.sleep(1)
+    # traj = get_trajectory(mpc_planner, x_0, xd) # Target trajectory from MPC
+    # plot_trajectory(trajectory=traj, savefig=True)
+    t_traj = 0
+    for traj_i in range(NB_TRAJ):
+        action = get_interp_action(mpc_planner, x_i, xd, control_mode=DEFAULT_CONTROL_MODE, from_ruckig=False, ruckig_as_ws=True)
+        status, nb_iter = mpc_planner.get_mpc_info()
+        print("status : {} | nb iter : {}".format(status, nb_iter))
+        time.sleep(1)
 
-    t = 0
-    while(error > tol):
-        loop_time = -time.time()
-        q_dot_old = q_dot_i # Save old velocity to compute derivative
+        t = 0
+        while(error > tol):
+            loop_time = -time.time()
+            q_dot_old = q_dot_i # Save old velocity to compute derivative
 
-        t_full_traj.append(t)
-        q_full_traj.append(q_i)
-        q_dot_full_traj.append(q_dot_i)
-        q_ddot_full_traj.append(q_ddot_i)
-        tau_full_traj.append(tau_i)
+            t_full_traj.append(t+t_traj)
+            q_full_traj.append(q_i)
+            q_dot_full_traj.append(q_dot_i)
+            q_ddot_full_traj.append(q_ddot_i)
+            tau_full_traj.append(tau_i)
 
-        # one step forward in simulation
-        if DEFAULT_CONTROL_MODE==CONTROL_MODE.POSITION_VELOCITY:
-            q_i, q_dot_i, tau_i = step(p, robotId, (action[0](t+dt), action[1](t+dt)), control_mode=DEFAULT_CONTROL_MODE)
-        else:
-            q_i, q_dot_i, tau_i = step(p, robotId, action(t+dt), control_mode=DEFAULT_CONTROL_MODE)
-        
-        # Get acceleration from PyBullet velocities
-        q_ddot_i = (q_dot_i - q_dot_old)/dt
-        #tau=10e-3
-        #q_ddot_i = (2*tau-dt)/(2*tau+dt) * q_ddot_i + 2 / (2*tau + dt) * (q_dot_i - q_dot_old)
-        
-        t += dt
-        loop_time += time.time()
-        time.sleep(max(dt - loop_time, dt/100))
+            # one step forward in simulation
+            if DEFAULT_CONTROL_MODE==CONTROL_MODE.POSITION_VELOCITY:
+                q_i, q_dot_i, tau_i = step(p, robotId, (action[0](t+dt), action[1](t+dt)), control_mode=DEFAULT_CONTROL_MODE)
+            else:
+                q_i, q_dot_i, tau_i = step(p, robotId, action(t+dt), control_mode=DEFAULT_CONTROL_MODE)
+            
+            # Get acceleration from PyBullet velocities
+            q_ddot_i = (q_dot_i - q_dot_old)/dt
 
-        error = np.linalg.norm(q_i - qd)
-        print("Time : {:.2f} [sec] | Error : {:.3f} [rad]".format(t, error))
+            t += dt
+            loop_time += time.time()
+            time.sleep(max(dt - loop_time, dt/100))
 
+            error = np.linalg.norm(q_i - qd)
+            print("Time : {:.2f} [sec] | Error : {:.3f} [rad]".format(t, error))
+
+        t_traj += t
+        q_dot_i, q_ddot_i, tau_i = 3*[np.zeros_like(q_i)]
+        x_i = (q_i, q_dot_i, q_ddot_i)
+        qd = (ul - ll) * random.sample(NDOF) + ll
+        #qd = 0.9 * ul + 0.1 * ll
+        qd_dot = np.zeros(NDOF)
+        qd_ddot = np.zeros(NDOF)
+        xd = (qd, qd_dot, qd_ddot)
+        error = float('inf')
     
     input("End simulation..")
     p.disconnect()

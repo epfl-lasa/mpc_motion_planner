@@ -7,15 +7,17 @@
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
+#include "armRobotWrapper.hpp"
+
 #define NDOF 7
 //#define EE_LINK_NAME "panda_tool"
 
-class PandaWrapper {
 
-    
-    
+
+class PandaWrapper : public ArmRobotWrapper {
+
   public:
-
+    /*
     pinocchio::Model model;
     pinocchio::Data data;
     int frame_id;
@@ -24,7 +26,13 @@ class PandaWrapper {
     Eigen::Matrix<double, NDOF, 1> inverse_kinematic(Eigen::Matrix3d orientation, Eigen::Vector3d position);
     Eigen::Matrix<double, NDOF, 1> inverse_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity);
     Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot);
+    */
 
+    std::string ee_link_name = "panda_tool";
+    std::string urdf;
+    PandaWrapper(std::string urdf) : ArmRobotWrapper(urdf, ee_link_name) {};
+
+    //std::string get_ee_link_name(){ return "panda_tool"; } override
 
     // Limits from https://frankaemika.github.io/docs/control_parameters.html
     Eigen::Matrix<double, NDOF, 1> min_position {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
