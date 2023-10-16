@@ -2,3 +2,10 @@ build
 .vscode
 results_images
 optimal_solution.txt
+benchmark_mpc_vh
+.png
+.npy
+.npz
+pyMPC/descriptions
+misc
+learning_ds_from_polympc

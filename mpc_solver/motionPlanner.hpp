@@ -60,8 +60,18 @@ class MotionPlanner {
         // Set the target (final state) as a constraint
         void set_target_state(Matrix<double, NDOF, 1> target_position, Matrix<double, NDOF, 1> target_velocity, Matrix<double, NDOF, 1> target_acceleration = Matrix<double, NDOF, 1>::Zero());
 
+        // Set the target (final state) in the task space as a constraint
+        void set_target_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity);
+
         // Set the current (initial state) as a constraint
         void set_current_state(Matrix<double, NDOF, 1> current_position, Matrix<double, NDOF, 1> current_velocity, Matrix<double, NDOF, 1> current_acceleration = Matrix<double, NDOF, 1>::Zero());
+
+        // Set the current (initial state) in the task space as a constraint
+        void set_current_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity);
+
+        Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q);
+
+        Eigen::Matrix<double, NDOF, 1> inverse_kinematics(Eigen::Matrix3d orientation, Eigen::Vector3d position);
 
         // Set margins on top of robot constraint. Each margin is the ratio of the initial range to be kept
         void set_constraint_margins(double margin_position, double margin_velocity, double margin_acceleration, double margin_torque, double margin_jerk);
@@ -73,6 +83,8 @@ class MotionPlanner {
 
         // Solve the OCP to generate the MPC trajectory
         void solve_trajectory(bool use_ruckig_as_warm_start);
+
+        void solve_trajectory(bool use_ruckig_as_warm_start, int sqp_max_iter, int line_search_max_iter);
 
         // Check if a given state is feasible
         int check_state_in_bounds(Matrix<double, 7, 1> &position, Matrix<double, 7, 1> &velocity, Matrix<double, 7, 1> acceleration = Matrix<double, NDOF, 1>::Zero());
@@ -257,10 +269,15 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("set_constraint_margins", &MotionPlanner<PandaWrapper>::set_constraint_margins)
         .def("set_min_height", &MotionPlanner<PandaWrapper>::set_min_height)
         .def("check_state_in_bounds", &MotionPlanner<PandaWrapper>::check_state_in_bounds)
-        .def("solve_trajectory", &MotionPlanner<PandaWrapper>::solve_trajectory)
+        .def("solve_trajectory", static_cast<void (MotionPlanner<PandaWrapper>::*)(bool, int, int)>(&MotionPlanner<PandaWrapper>::solve_trajectory))
+        .def("solve_trajectory", static_cast<void (MotionPlanner<PandaWrapper>::*)(bool)>(&MotionPlanner<PandaWrapper>::solve_trajectory))
         .def("get_mpc_info", &MotionPlanner<PandaWrapper>::get_mpc_info)
         .def("get_ruckig_trajectory", &MotionPlanner<PandaWrapper>::get_ruckig_trajectory_wrapper<100>)
-        .def("get_MPC_trajectory", &MotionPlanner<PandaWrapper>::get_MPC_trajectory_wrapper<100>);
+        .def("get_MPC_trajectory", &MotionPlanner<PandaWrapper>::get_MPC_trajectory_wrapper<100>)
+        .def("set_target_state_task_space", &MotionPlanner<PandaWrapper>::set_target_state_task_space)
+        .def("set_current_state_task_space", &MotionPlanner<PandaWrapper>::set_current_state_task_space)
+        .def("forward_kinematics", &MotionPlanner<PandaWrapper>::forward_kinematics)
+        .def("inverse_kinematics", &MotionPlanner<PandaWrapper>::inverse_kinematics);
 
     py::class_<MotionPlanner<Kuka7Wrapper>>(m, "Kuka7MotionPlanner")
         .def(py::init<std::string>())
@@ -269,10 +286,15 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("set_constraint_margins", &MotionPlanner<Kuka7Wrapper>::set_constraint_margins)
         .def("set_min_height", &MotionPlanner<Kuka7Wrapper>::set_min_height)
         .def("check_state_in_bounds", &MotionPlanner<Kuka7Wrapper>::check_state_in_bounds)
-        .def("solve_trajectory", &MotionPlanner<Kuka7Wrapper>::solve_trajectory)
+        .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka7Wrapper>::*)(bool, int, int)>(&MotionPlanner<Kuka7Wrapper>::solve_trajectory))
+        .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka7Wrapper>::*)(bool)>(&MotionPlanner<Kuka7Wrapper>::solve_trajectory))
         .def("get_mpc_info", &MotionPlanner<Kuka7Wrapper>::get_mpc_info)
         .def("get_ruckig_trajectory", &MotionPlanner<Kuka7Wrapper>::get_ruckig_trajectory_wrapper<100>)
-        .def("get_MPC_trajectory", &MotionPlanner<Kuka7Wrapper>::get_MPC_trajectory_wrapper<100>);
+        .def("get_MPC_trajectory", &MotionPlanner<Kuka7Wrapper>::get_MPC_trajectory_wrapper<100>)
+        .def("set_target_state_task_space", &MotionPlanner<Kuka7Wrapper>::set_target_state_task_space)
+        .def("set_current_state_task_space", &MotionPlanner<Kuka7Wrapper>::set_current_state_task_space)
+        .def("forward_kinematics", &MotionPlanner<Kuka7Wrapper>::forward_kinematics)
+        .def("inverse_kinematics", &MotionPlanner<Kuka7Wrapper>::inverse_kinematics);
 
 
     py::class_<MotionPlanner<Kuka14Wrapper>>(m, "Kuka14MotionPlanner")
@@ -282,8 +304,13 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("set_constraint_margins", &MotionPlanner<Kuka14Wrapper>::set_constraint_margins)
         .def("set_min_height", &MotionPlanner<Kuka14Wrapper>::set_min_height)
         .def("check_state_in_bounds", &MotionPlanner<Kuka14Wrapper>::check_state_in_bounds)
-        .def("solve_trajectory", &MotionPlanner<Kuka14Wrapper>::solve_trajectory)
+        .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka14Wrapper>::*)(bool, int, int)>(&MotionPlanner<Kuka14Wrapper>::solve_trajectory))
+        .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka14Wrapper>::*)(bool)>(&MotionPlanner<Kuka14Wrapper>::solve_trajectory))
         .def("get_mpc_info", &MotionPlanner<Kuka14Wrapper>::get_mpc_info)
         .def("get_ruckig_trajectory", &MotionPlanner<Kuka14Wrapper>::get_ruckig_trajectory_wrapper<100>)
-        .def("get_MPC_trajectory", &MotionPlanner<Kuka14Wrapper>::get_MPC_trajectory_wrapper<100>);
+        .def("get_MPC_trajectory", &MotionPlanner<Kuka14Wrapper>::get_MPC_trajectory_wrapper<100>)
+        .def("set_target_state_task_space", &MotionPlanner<Kuka14Wrapper>::set_target_state_task_space)
+        .def("set_current_state_task_space", &MotionPlanner<Kuka14Wrapper>::set_current_state_task_space)
+        .def("forward_kinematics", &MotionPlanner<Kuka14Wrapper>::forward_kinematics)
+        .def("inverse_kinematics", &MotionPlanner<Kuka14Wrapper>::inverse_kinematics);
 }

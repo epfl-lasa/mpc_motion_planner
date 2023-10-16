@@ -2,6 +2,7 @@
 
 template <typename RobotWrapper>
 MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
+//MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
 
     Matrix<double, NDOF, 1> default_position = (robot.max_position.array() + robot.min_position.array())/2;
 
@@ -10,11 +11,11 @@ MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_pa
 
     // ---------- PolyMPC setup ---------- //
     
-    std::cout << "link name in Motion planner constructor" << robot.ee_link_name << std::endl;
+    std::cout << "link name in Motion planner constructor " << robot.ee_link_name << std::endl;
     mpc.ocp().init(urdf_path, robot.ee_link_name);
 
     // Solver settings
-    mpc.settings().max_iter = 20; //2; 
+    mpc.settings().max_iter = 1000; //2; 
     mpc.qp_settings().max_iter = 700;
     mpc.settings().line_search_max_iter = 10;
     mpc.set_time_limits(0, 1);
@@ -42,6 +43,18 @@ void MotionPlanner<RobotWrapper>::set_target_state(Matrix<double, NDOF, 1> targe
 }
 
 template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_target_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity){
+    Matrix<double, NDOF, 1> q_des;
+    Matrix<double, NDOF, 1> qdot_des;
+
+    // Compute inverse kinematic
+    q_des = robot.inverse_kinematic(orientation, position);
+    qdot_des = robot.inverse_velocities(q_des, linear_velocity, angular_velocity);
+
+    set_target_state(q_des, qdot_des, Matrix<double, NDOF, 1>::Zero());
+}
+
+template <typename RobotWrapper>
 void MotionPlanner<RobotWrapper>::set_current_state(Matrix<double, NDOF, 1> current_position, Matrix<double, NDOF, 1> current_velocity, Matrix<double, NDOF, 1> current_acceleration){
     
     // Update MPC constraints
@@ -55,6 +68,29 @@ void MotionPlanner<RobotWrapper>::set_current_state(Matrix<double, NDOF, 1> curr
     Matrix<double, 7, 1>::Map(input.current_velocity.data() ) = current_velocity;
     Matrix<double, 7, 1>::Map(input.current_acceleration.data() ) = current_acceleration;
     // std::cout << 'setting acc ' << current_acceleration.transpose() << std::endl; ;
+}
+
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_current_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity){
+    
+    Eigen::Matrix<double, NDOF, 1> q_curr;
+    Eigen::Matrix<double, NDOF, 1> qdot_curr;
+
+    // Compute inverse kinematic 
+    q_curr = robot.inverse_kinematic(orientation, position);
+    qdot_curr = robot.inverse_velocities(q_curr, linear_velocity, angular_velocity);
+
+    set_current_state(q_curr, qdot_curr, Matrix<double, NDOF, 1>::Zero());
+}
+
+template <typename RobotWrapper>
+Eigen::Matrix<double, 3, 1> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
+    return robot.forward_kinematics(q);
+}
+
+template <typename RobotWrapper>
+Eigen::Matrix<double, NDOF, 1> MotionPlanner<RobotWrapper>::inverse_kinematics(Eigen::Matrix3d orientation, Eigen::Vector3d position){
+    return robot.inverse_kinematic(orientation, position);
 }
 
 template <typename RobotWrapper>
@@ -219,6 +255,36 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
     mpc.p_guess(mpc.solution_p());
 
 }
+
+template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start, int sqp_max_iter, int line_search_max_iter_in){
+
+     // Warm start with ruckig if needed
+    if (use_ruckig_as_warm_start) warm_start_RK();
+
+    auto start = std::chrono::system_clock::now();
+
+    mpc.settings().line_search_max_iter = line_search_max_iter_in;
+    mpc.settings().max_iter = sqp_max_iter;
+    mpc.solve(); 
+
+    auto stop = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    double dT = duration.count()*1e-3;
+
+    // Fix initial and final point at correct place
+    mpc_t::traj_state_t x_guess;
+    x_guess = mpc.solution_x();
+    x_guess.head(mpc_t::nx) = current_state;
+    x_guess.tail(mpc_t::nx) = target_state;
+
+    mpc.x_guess(x_guess);	
+    mpc.u_guess(mpc.solution_u());
+    mpc.p_guess(mpc.solution_p());
+
+}
+
+
 
 template class MotionPlanner<PandaWrapper>;
 template class MotionPlanner<Kuka7Wrapper>;

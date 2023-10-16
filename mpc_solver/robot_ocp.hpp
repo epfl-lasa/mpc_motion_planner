@@ -58,6 +58,7 @@ public:
 
     void init(std::string urdf_path, std::string ee_link_name){
         std::cout << ee_link_name << std::endl;
+        std::cout << "urdf : " << urdf_path << std::endl;
         pinocchio::urdf::buildModel(urdf_path, model);
         //std::cout << "getFrameId before" << endl;
         //frame_id = model.getFrameId("panda_tool");
@@ -245,6 +246,8 @@ inequality_constraints_impl(const Ref<const state_t<T>> x, const Ref<const contr
     {   
         //std::cout << "mayer_term_impl" << std::endl;
         mayer = p(0);
+
+        //std::cout << "Mayer's term : " << mayer << std::endl; 
 
         // polympc::ignore_unused_var(x);
         polympc::ignore_unused_var(u);

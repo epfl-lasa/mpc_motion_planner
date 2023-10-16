@@ -28,7 +28,7 @@ class Kuka14Wrapper : public ArmRobotWrapper {
     */
     std::string ee_link_name = "grabber_link";
     std::string urdf;
-    Kuka14Wrapper(std::string urdf) : ArmRobotWrapper(urdf, ee_link_name) {};
+    Kuka14Wrapper(std::string urdf) : ArmRobotWrapper(urdf, "grabber_link") {};
 
     // Limits from urdf
     Eigen::Matrix<double, NDOF, 1> min_position {-2.9671, -2.0944, -2.9671, -2.0944, -2.9671, -2.0944, -3.0543};

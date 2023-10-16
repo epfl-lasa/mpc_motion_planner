@@ -30,7 +30,7 @@ class PandaWrapper : public ArmRobotWrapper {
 
     std::string ee_link_name = "panda_tool";
     std::string urdf;
-    PandaWrapper(std::string urdf) : ArmRobotWrapper(urdf, ee_link_name) {};
+    PandaWrapper(std::string urdf) : ArmRobotWrapper(urdf, "panda_tool") {};
 
     //std::string get_ee_link_name(){ return "panda_tool"; } override
 

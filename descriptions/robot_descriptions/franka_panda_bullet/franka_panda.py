@@ -8,6 +8,7 @@ v_min = (-2.1750, -2.1750, -2.1750, -2.1750, -2.6100, -2.6100, -2.6100)
 v_max = (2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100)
 a_min = (-15, -7.5, -10, -12.5, -15, -20, -20)
 a_max = (15, 7.5, 10, 12.5, 15, 20, 20)
+tau_max = (87, 87, 87, 87, 12, 12, 12)
 
 X_limits = np.array(
     [(q_min[0], q_max[0]), (q_min[1], q_max[1]), (q_min[2], q_max[2]), (q_min[3], q_max[3]),
@@ -18,6 +19,7 @@ V_limits = np.array(
 A_limits = np.array(
     [(a_min[0], a_max[0]), (a_min[1], a_max[1]), (a_min[2], a_max[2]), (a_min[3], a_max[3]),
         (a_min[4], a_max[4]), (a_min[5], a_max[5]), (a_min[6], a_max[6])])
+T_limits = np.array(tau_max)
 
 
 # Define problem parameters
@@ -28,3 +30,6 @@ ROBOT_EF_IDX = 11
 CONTROLLED_JOINTS = [0, 1, 2, 3, 4, 5, 6]
 NDOF = len(CONTROLLED_JOINTS)
 EE_LINK_NAME = "panda_tool"
+
+ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda.urdf"
+MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda_arm.urdf" # THIS ONE IS USED ON THE REAL ROBOT

@@ -1,5 +1,5 @@
 import motion_planning_lib as mpl
-from panda_mpc_trajectoy_planning import *
+from .mpc_trajectory_planning import *
 from descriptions.robot_descriptions.franka_panda_bullet.franka_panda import *
 
 ROBOT_URDF_PATH = "descriptions/robot_descriptions/franka_panda_bullet/panda.urdf"

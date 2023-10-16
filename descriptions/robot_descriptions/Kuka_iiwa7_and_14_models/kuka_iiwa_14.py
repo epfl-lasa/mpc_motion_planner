@@ -26,3 +26,7 @@ ll = np.array([-2.9671, -2.0944, -2.9671, -2.0944, -2.9671, -2.0944, -3.0543]) +
 
 CONTROLLED_JOINTS = [1, 2, 3, 4, 5, 6, 7]
 NDOF = len(CONTROLLED_JOINTS)
+
+ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa14.urdf" #/panda.urdf"
+MPC_ROBOT_URDF_PATH = "descriptions/robot_descriptions/Kuka_iiwa7_and_14_models/iiwas/model_iiwa14.urdf" # THIS ONE IS USED ON THE REAL ROBOT
+    

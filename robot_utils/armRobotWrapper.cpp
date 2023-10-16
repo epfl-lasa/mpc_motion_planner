@@ -1,18 +1,8 @@
 #include "armRobotWrapper.hpp"
-#include "pandaWrapper.hpp"
-#include "kuka7Wrapper.hpp"
 
 
-/*
 
-NOTE AU STEPHEN DU FUTUR
-LE LINK NAME N'ARRIVE PAS JUSQUE À ROBOT_OCP!!!!
-SI C'EST HARDCODE CA MARCHE POUR LE PANDA EN TOUT CAS
-
-*/
-
-
-ArmRobotWrapper::ArmRobotWrapper(std::string urdf_path, std::string ee_link_name) {
+ArmRobotWrapper::ArmRobotWrapper(std::string urdf_path, const std::string ee_link_name) {
 
     pinocchio::urdf::buildModel(urdf_path, model);
 
@@ -20,7 +10,13 @@ ArmRobotWrapper::ArmRobotWrapper(std::string urdf_path, std::string ee_link_name
 
     data = new_data;
 
+    //std::cout << "link name in constructor : " << ee_link_name << std::endl;
+    bool frame_exist;
+    frame_exist = model.existFrame(ee_link_name);
+    //std::cout << "frame exist ? " << frame_exist << std::endl;
     frame_id = model.getFrameId(ee_link_name);
+    //std::cout << "frame_id in ArmRobotWrapper constructor : " << frame_id << std::endl;
+    //std::cout << "frame : " << model.frames[frame_id] << std::endl;
 }
 
 Eigen::Matrix<double, 7, 1> ArmRobotWrapper::inverse_kinematic(Eigen::Matrix3d orientation, Eigen::Vector3d position){
@@ -45,6 +41,7 @@ Eigen::Matrix<double, 7, 1> ArmRobotWrapper::inverse_kinematic(Eigen::Matrix3d o
         pinocchio::updateFramePlacement(model,data,frame_id);
         const pinocchio::SE3 dMf = oMdes.actInv(data.oMf[frame_id]);
         err = pinocchio::log6(dMf).toVector();
+
         if(err.norm() < eps)
         {
             success = true;
@@ -55,6 +52,7 @@ Eigen::Matrix<double, 7, 1> ArmRobotWrapper::inverse_kinematic(Eigen::Matrix3d o
             success = false;
             break;
         }
+
         pinocchio::computeFrameJacobian(model, data, q, frame_id, J);
         pinocchio::Data::Matrix6 JJt;
         JJt.noalias() = J * J.transpose();
@@ -97,6 +95,16 @@ Eigen::Matrix<double, NDOF, 1> ArmRobotWrapper::inverse_velocities(Eigen::Matrix
     // Cast to static matrix
     Eigen::Ref<Eigen::Matrix<double, NDOF, 1>> joint_velocity_solution(joint_velocity);
     return joint_velocity_solution;
+}
+
+Eigen::Matrix<double, 3, 1> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
+    pinocchio::forwardKinematics(model,data,q);
+    pinocchio::updateFramePlacement(model,data,frame_id);
+
+    Eigen::MatrixXd x(3, 1); x.setZero();
+    x.block(0, 0, 3, 1) = data.oMf[frame_id].rotation();
+
+    return x;
 }
 
 Eigen::Matrix<double, 6, 1> ArmRobotWrapper::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot){
