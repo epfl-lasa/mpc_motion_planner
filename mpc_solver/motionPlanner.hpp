@@ -24,9 +24,6 @@ class MotionPlanner {
 
     private:
 
-        // Solve problem with ruckig to initialize MPC
-        void warm_start_RK();
-
     public:
 
         MotionPlanner(std::string urdf_path);
@@ -52,10 +49,13 @@ class MotionPlanner {
         const double eps = 1e-2;
         const double inf = std::numeric_limits<double>::infinity();
 
-        // -------- Methods -------- //
-
         // Margins on bounds
         double margin_position_, margin_velocity_, margin_acceleration_, margin_torque_, margin_jerk_;
+
+        // -------- Methods -------- //
+
+        // Solve problem with ruckig to initialize MPC
+        void warm_start_RK();
         
         // Set the target (final state) as a constraint
         void set_target_state(Matrix<double, NDOF, 1> target_position, Matrix<double, NDOF, 1> target_velocity, Matrix<double, NDOF, 1> target_acceleration = Matrix<double, NDOF, 1>::Zero());
@@ -271,6 +271,7 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("check_state_in_bounds", &MotionPlanner<PandaWrapper>::check_state_in_bounds)
         .def("solve_trajectory", static_cast<void (MotionPlanner<PandaWrapper>::*)(bool, int, int)>(&MotionPlanner<PandaWrapper>::solve_trajectory))
         .def("solve_trajectory", static_cast<void (MotionPlanner<PandaWrapper>::*)(bool)>(&MotionPlanner<PandaWrapper>::solve_trajectory))
+        .def("solve_ruckig_trajectory", &MotionPlanner<PandaWrapper>::warm_start_RK)
         .def("get_mpc_info", &MotionPlanner<PandaWrapper>::get_mpc_info)
         .def("get_ruckig_trajectory", &MotionPlanner<PandaWrapper>::get_ruckig_trajectory_wrapper<100>)
         .def("get_MPC_trajectory", &MotionPlanner<PandaWrapper>::get_MPC_trajectory_wrapper<100>)
@@ -288,6 +289,7 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("check_state_in_bounds", &MotionPlanner<Kuka7Wrapper>::check_state_in_bounds)
         .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka7Wrapper>::*)(bool, int, int)>(&MotionPlanner<Kuka7Wrapper>::solve_trajectory))
         .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka7Wrapper>::*)(bool)>(&MotionPlanner<Kuka7Wrapper>::solve_trajectory))
+        .def("solve_ruckig_trajectory", &MotionPlanner<Kuka7Wrapper>::warm_start_RK)
         .def("get_mpc_info", &MotionPlanner<Kuka7Wrapper>::get_mpc_info)
         .def("get_ruckig_trajectory", &MotionPlanner<Kuka7Wrapper>::get_ruckig_trajectory_wrapper<100>)
         .def("get_MPC_trajectory", &MotionPlanner<Kuka7Wrapper>::get_MPC_trajectory_wrapper<100>)
@@ -306,6 +308,7 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("check_state_in_bounds", &MotionPlanner<Kuka14Wrapper>::check_state_in_bounds)
         .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka14Wrapper>::*)(bool, int, int)>(&MotionPlanner<Kuka14Wrapper>::solve_trajectory))
         .def("solve_trajectory", static_cast<void (MotionPlanner<Kuka14Wrapper>::*)(bool)>(&MotionPlanner<Kuka14Wrapper>::solve_trajectory))
+        .def("solve_ruckig_trajectory", &MotionPlanner<Kuka14Wrapper>::warm_start_RK)
         .def("get_mpc_info", &MotionPlanner<Kuka14Wrapper>::get_mpc_info)
         .def("get_ruckig_trajectory", &MotionPlanner<Kuka14Wrapper>::get_ruckig_trajectory_wrapper<100>)
         .def("get_MPC_trajectory", &MotionPlanner<Kuka14Wrapper>::get_MPC_trajectory_wrapper<100>)

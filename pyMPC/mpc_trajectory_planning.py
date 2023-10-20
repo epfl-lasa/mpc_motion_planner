@@ -28,7 +28,10 @@ ROBOT_MODEL = "PANDA"
 NPTS = 100 # Number of points returned by the get_MPC_trajectory function
 SIM_FREQ = 50
 ACTION_REPEAT = 20
-CONS_MARGINS = [0.85, 0.8, 0.1, 0.9, 0.05]
+#CONS_MARGINS = [0.85, 0.8, 0.1, 0.9, 0.05] #(old)
+CONS_MARGINS = [0.95, 0.95, 0.3, 0.9, 0.05] #(yang)
+#CONS_MARGINS = [0.95, 0.95, 0.3, 0.9, 0.1] #(TRUE yang)
+#CONS_MARGINS = [0.85, 0.8, 0.1, 0.9, 0.1] #(albéric)
 
 if ROBOT_MODEL=="PANDA":
     from descriptions.robot_descriptions.franka_panda_bullet.franka_panda import *
@@ -189,7 +192,7 @@ def apply_action(robotId, action, control_mode=DEFAULT_CONTROL_MODE):
 
 #-----------------------------------------------------------------------------------------------------------------------#
 
-def get_trajectory_list(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, get_time_to_solve=False, cons_margins=CONS_MARGINS):
+def get_trajectory_list(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, get_time_to_solve=False):
     """
     Return N trajectories from the planner, corresponding to N boundary conditions (x, xd).
     ____________________________________________________________________________________________________________________
@@ -243,7 +246,7 @@ def get_trajectory_list(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, ge
 
 #-----------------------------------------------------------------------------------------------------------------------#
 
-def get_trajectory_numpy(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, cons_margins=CONS_MARGINS, sqp_max_iter=3, line_search_max_iter=10):
+def get_trajectory_numpy(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, ruckig_only=False, sqp_max_iter=3, line_search_max_iter=10):
     """
     Return N trajectories from the planner, corresponding to N boundary conditions (x, xd).
     ____________________________________________________________________________________________________________________
@@ -269,39 +272,48 @@ def get_trajectory_numpy(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, c
         planner.set_current_state(x[0][i], x[1][i], x[2][i])
         planner.set_target_state(xd[0][i], xd[1][i], xd[2][i])
         start = time.time()
-        planner.solve_trajectory(ruckig_as_ws, sqp_max_iter, line_search_max_iter)
-        time_to_solve_i = time.time() - start
-        status_i, iter_i = planner.get_mpc_info()
 
-        traj_i = planner.get_MPC_trajectory()           
-        t_i, q_i, qdot_i, qddot_i, tau_i = traj_i
+        if ruckig_only:
+            planner.solve_ruckig_trajectory()
+            time_to_solve_i = time.time() - start
+            status_i, iter_i = planner.get_mpc_info()
+            time_to_solve.append(time_to_solve_i) 
+            status.append(status_i)
+            iter.append(iter_i)
+        else:
+            planner.solve_trajectory(ruckig_as_ws, sqp_max_iter, line_search_max_iter)
+            time_to_solve_i = time.time() - start
+            status_i, iter_i = planner.get_mpc_info()
 
-        # Time
-        t_i = np.reshape(t_i, (1, NPTS+1))
-        t = np.append(t, t_i, axis=0)
+            traj_i = planner.get_MPC_trajectory()           
+            t_i, q_i, qdot_i, qddot_i, tau_i = traj_i
 
-        # Joint position
-        q_i = np.reshape(q_i, (1, NDOF, NPTS+1))
-        q = np.append(q, q_i, axis=0)
-    
-        # Joint velocity
-        qdot_i = np.reshape(qdot_i, (1, NDOF, NPTS+1))
-        qdot = np.append(qdot, qdot_i, axis=0)
+            # Time
+            t_i = np.reshape(t_i, (1, NPTS+1))
+            t = np.append(t, t_i, axis=0)
 
-        # Joint acceleration
-        qddot_i = np.reshape(qddot_i, (1, NDOF, NPTS+1))
-        qddot = np.append(qddot, qddot_i, axis=0)
+            # Joint position
+            q_i = np.reshape(q_i, (1, NDOF, NPTS+1))
+            q = np.append(q, q_i, axis=0)
+        
+            # Joint velocity
+            qdot_i = np.reshape(qdot_i, (1, NDOF, NPTS+1))
+            qdot = np.append(qdot, qdot_i, axis=0)
 
-        # Torque
-        tau_i = np.reshape(tau_i, (1, NDOF, NPTS+1))
-        tau = np.append(tau, tau_i, axis=0)
+            # Joint acceleration
+            qddot_i = np.reshape(qddot_i, (1, NDOF, NPTS+1))
+            qddot = np.append(qddot, qddot_i, axis=0)
 
-        traj.append(traj_i)
-        time_to_solve.append(time_to_solve_i) 
-        status.append(status_i)
-        iter.append(iter_i)
+            # Torque
+            tau_i = np.reshape(tau_i, (1, NDOF, NPTS+1))
+            tau = np.append(tau, tau_i, axis=0)
 
-        if from_ruckig:
+            traj.append(traj_i)
+            time_to_solve.append(time_to_solve_i) 
+            status.append(status_i)
+            iter.append(iter_i)
+
+        if from_ruckig or ruckig_only:
             traj_i_ruckig = planner.get_ruckig_trajectory()
             t_i_ruckig, q_i_ruckig, qdot_i_ruckig, qddot_i_ruckig, tau_i_ruckig = traj_i_ruckig
 
@@ -325,16 +337,20 @@ def get_trajectory_numpy(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, c
             tau_i_ruckig = np.reshape(tau_i_ruckig, (1, NDOF, NPTS+1))
             tau_ruckig = np.append(tau_ruckig, tau_i_ruckig, axis=0)
     
-    if len(traj) == 1: # avoid returning a list when only 1 trajectory is returned
-        traj = traj[0]
+    if i==0: # avoid returning a list when only 1 trajectory is returned
         time_to_solve = time_to_solve[0]
         status = status[0]
         iter = iter[0]
 
+    
+
     info = {"status": status, "iter": iter, "time": time_to_solve}
+    #print(info)
 
     if from_ruckig:
         return info, (t, q, qdot, qddot, tau), (t_ruckig, q_ruckig, qdot_ruckig, qddot_ruckig, tau_ruckig)
+    elif ruckig_only:
+        return info, (t_ruckig, q_ruckig, qdot_ruckig, qddot_ruckig, tau_ruckig)
     else:
         return info, (t, q, qdot, qddot, tau)
 
@@ -465,7 +481,7 @@ def get_power_cons(trajectory):
 
 #-----------------------------------------------------------------------------------------------------------------------#
 
-def kin_dyn_constraints_satisfied(trajectory):
+def kin_dyn_constraints_satisfied(trajectory, ruckig=False):
     """
     
     ____________________________________________________________________________________________________________________
@@ -481,19 +497,23 @@ def kin_dyn_constraints_satisfied(trajectory):
     idxConsNotSatisfied = np.ndarray(shape=(0, 1), dtype=np.int32)
     for i, (q_i, qdot_i, qddot_i, tau_i) in enumerate(zip(q, qdot, qddot, tau)):
         #print(i, q_i.shape, qdot_i.shape, qddot_i.shape, tau_i.shape)
-        kinConsSatisfied_i = kinematic_constraints_satisfied(q, qdot, qddot)
-        dynConsSatisfied_i = dynamic_constraints_satisfied(tau)
+        kinConsSatisfied_i = kinematic_constraints_satisfied(q_i, qdot_i, qddot_i, ruckig=ruckig)
+        dynConsSatisfied_i = dynamic_constraints_satisfied(tau_i)
         all_cons_satisfied = dynConsSatisfied_i[0] and kinConsSatisfied_i[0] # True if all the constraints are satisfied
         consSatisfied = np.append(consSatisfied, np.array([[all_cons_satisfied, kinConsSatisfied_i[0], dynConsSatisfied_i[0]]]), axis=0)
         if not(all_cons_satisfied):
             idxConsNotSatisfied = np.append(idxConsNotSatisfied, np.array([i]))
+            #print("kin cons not satisfied : ", kinConsSatisfied_i[1])
+            #print("dyn cons not satisfied : ", dynConsSatisfied_i[1])
+
+        #print(idxConsNotSatisfied)
     
     # first value is true if all constraints are always satisfied --> no idx stored
     return idxConsNotSatisfied.shape[0]==0, consSatisfied, idxConsNotSatisfied
 
 #-----------------------------------------------------------------------------------------------------------------------#
 
-def kinematic_constraints_satisfied(q, qdot, qddot):
+def kinematic_constraints_satisfied(q, qdot, qddot, ruckig=False):
     """
     
     ____________________________________________________________________________________________________________________
@@ -505,14 +525,13 @@ def kinematic_constraints_satisfied(q, qdot, qddot):
     ____________________________________________________________________________________________________________________"""
     qViolationIdx, qdotViolationIdx, qddotViolationIdx = [], [], []
     
-    for i, (q_i, qdot_i, qddot_i) in enumerate(zip(q.T, qdot.T, qddot.T)):
-        #print(i, q_i.shape, qdot_i.shape, qddot_i.shape)
+    for i, (q_i, qdot_i, qddot_i) in enumerate(zip(q.T, qdot.T, qddot.T)): # This loop goes through all the states in ONE trajectory
         if len(q_i.shape) == 1:
             q_i = np.reshape(q_i, (q_i.shape[0], 1))
             qdot_i = np.reshape(qdot_i, (qdot_i.shape[0], 1))
             qddot_i = np.reshape(qddot_i, (qddot_i.shape[0], 1))
 
-        if np.sum(q_i > X_limits[:, 1, None]) or np.sum(q_i < X_limits[:, 0, None]):
+        if not(ruckig) and (np.sum(q_i > X_limits[:, 1, None]) or np.sum(q_i < X_limits[:, 0, None])):
             qViolationIdx.append(i)
 
         if np.sum(qdot_i > V_limits[:, 1, None]) or np.sum(qdot_i < V_limits[:, 0, None]):
@@ -522,19 +541,13 @@ def kinematic_constraints_satisfied(q, qdot, qddot):
             qddotViolationIdx.append(i)
 
     cons_satisfied=True
-    if len(qViolationIdx) == 0:
-        qViolationIdx = None
-    else:
+    if len(qViolationIdx) != 0:
         cons_satisfied=False
 
-    if len(qdotViolationIdx) == 0:
-        qdotViolationIdx = None
-    else:
+    if len(qdotViolationIdx) != 0:
         cons_satisfied=False
 
-    if len(qddotViolationIdx) == 0:
-        qddotViolationIdx = None
-    else:
+    if len(qddotViolationIdx) != 0:
         cons_satisfied=False
 
     return cons_satisfied, (qViolationIdx, qdotViolationIdx, qddotViolationIdx)
@@ -553,14 +566,13 @@ def dynamic_constraints_satisfied(torque):
     ____________________________________________________________________________________________________________________"""
     violationIdx = []
     for i, tau_i in enumerate(torque.T):
-        #print(i, tau_i.shape)
-        if len(tau_i.shape) == 0:
+        if len(tau_i.shape) == 1:
             tau_i = np.reshape(tau_i, (tau_i.shape[0], 1))
-        if np.sum(tau_i > T_limits[:, None]):
+        if np.sum(np.abs(tau_i.squeeze()) > T_limits.T):
             violationIdx.append(i)
 
     if len(violationIdx) == 0:
-        return True, None
+        return True, violationIdx
     else:
         return False, violationIdx
 
