@@ -29,7 +29,10 @@ NPTS = 100 # Number of points returned by the get_MPC_trajectory function
 SIM_FREQ = 50
 ACTION_REPEAT = 20
 #CONS_MARGINS = [0.85, 0.8, 0.1, 0.9, 0.05] #(old)
-CONS_MARGINS = [0.95, 0.95, 0.3, 0.9, 0.05] #(yang)
+
+#CONS_MARGINS = [0.95, 0.95, 0.3, 0.9, 0.05] #(yang)
+CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
+
 #CONS_MARGINS = [0.95, 0.95, 0.3, 0.9, 0.1] #(TRUE yang)
 #CONS_MARGINS = [0.85, 0.8, 0.1, 0.9, 0.1] #(albéric)
 
@@ -128,6 +131,7 @@ def setup_motion_planner(robotModel, q0=None, q0_dot=None, q0_ddot=None, robot_u
         else:
             #print(robot_urdf_path)
             mpc_planner = mpl.PandaMotionPlanner(robot_urdf_path)
+
     elif robotModel=="KUKA7":
         if robot_urdf_path is None:
             mpc_planner = mpl.Kuka7MotionPlanner(ROBOT_URDF_PATH)
@@ -281,12 +285,13 @@ def get_trajectory_numpy(planner, x, xd, ruckig_as_ws=True, from_ruckig=False, r
             status.append(status_i)
             iter.append(iter_i)
         else:
-            planner.solve_trajectory(ruckig_as_ws, sqp_max_iter, line_search_max_iter)
+            planner.solve_trajectory(ruckig_as_ws, sqp_max_iter, line_search_max_iter) # C'EST ICI QUE CA FOIRE
             time_to_solve_i = time.time() - start
             status_i, iter_i = planner.get_mpc_info()
 
             traj_i = planner.get_MPC_trajectory()           
             t_i, q_i, qdot_i, qddot_i, tau_i = traj_i
+            print(np.swapaxes(t_i.shape, q_i.shape))
 
             # Time
             t_i = np.reshape(t_i, (1, NPTS+1))
@@ -551,6 +556,34 @@ def kinematic_constraints_satisfied(q, qdot, qddot, ruckig=False):
         cons_satisfied=False
 
     return cons_satisfied, (qViolationIdx, qdotViolationIdx, qddotViolationIdx)
+
+#-----------------------------------------------------------------------------------------------------------------------#
+
+def ee_constraints_satisfied(motion_planner, q, qdot, qddot, ruckig=False):
+
+    eePosViolationIdx, eeVelViolationIdx = [], []
+    for i, (q_i, qdot_i, qddot_i) in enumerate(zip(q.T, qdot.T, qddot.T)): # This loop goes through all the states in ONE trajectory
+        if len(q_i.shape) == 1:
+            q_i = np.reshape(q_i, (q_i.shape[0], 1))
+            qdot_i = np.reshape(qdot_i, (qdot_i.shape[0], 1))
+            qddot_i = np.reshape(qddot_i, (qddot_i.shape[0], 1))
+
+        ee_pos = motion_planner.forward_kinematics(q_i)
+        ee_vel = motion_planner.forward_velocities(q_i, qdot_i, "panda_link7")
+
+        if not(ruckig) and ee_pos[2] < 0.05:
+            eePosViolationIdx.append(i)
+
+        if not(ruckig) and np.linalg.norm(ee_vel[0:3]) > 1.7:
+            eeVelViolationIdx.append(i)
+    
+    cons_satisfied = True
+    if len(eePosViolationIdx) != 0:
+        cons_satisfied=False
+    if len(eeVelViolationIdx) != 0:
+        cons_satisfied=False
+
+    return cons_satisfied, (eePosViolationIdx, eeVelViolationIdx)
 
 #-----------------------------------------------------------------------------------------------------------------------#
 

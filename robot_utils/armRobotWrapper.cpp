@@ -97,12 +97,23 @@ Eigen::Matrix<double, NDOF, 1> ArmRobotWrapper::inverse_velocities(Eigen::Matrix
     return joint_velocity_solution;
 }
 
+Eigen::Matrix<double, 3, 1> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
+    int frame_id_to_use = model.getFrameId(frame_name);
+    pinocchio::forwardKinematics(model,data,q);
+    pinocchio::updateFramePlacement(model,data,frame_id_to_use);
+
+    Eigen::MatrixXd x(3, 1); x.setZero();
+    x.block(0, 0, 3, 1) = data.oMf[frame_id_to_use].translation();
+
+    return x;
+}
+
 Eigen::Matrix<double, 3, 1> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
     pinocchio::forwardKinematics(model,data,q);
     pinocchio::updateFramePlacement(model,data,frame_id);
 
     Eigen::MatrixXd x(3, 1); x.setZero();
-    x.block(0, 0, 3, 1) = data.oMf[frame_id].rotation();
+    x.block(0, 0, 3, 1) = data.oMf[frame_id].translation();
 
     return x;
 }
@@ -119,6 +130,26 @@ Eigen::Matrix<double, 6, 1> ArmRobotWrapper::forward_velocities(Eigen::Matrix<do
     Eigen::MatrixXd rotateJacobian(6,6); rotateJacobian.setZero();
     rotateJacobian.block(0,0,3,3) = data.oMf[frame_id].rotation();
     rotateJacobian.block(3,3,3,3) = data.oMf[frame_id].rotation();
+    J = rotateJacobian * J;
+
+    Eigen::Matrix<double, 6, 1> task_velocity = J*qdot;
+
+    return task_velocity;
+}
+
+Eigen::Matrix<double, 6, 1> ArmRobotWrapper::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name){
+
+    int frame_id_to_use = model.getFrameId(frame_name);
+    pinocchio::Data::Matrix6x J(6,7); J.setZero();
+
+    pinocchio::forwardKinematics(model,data,q);
+    pinocchio::updateFramePlacement(model,data,frame_id_to_use);
+    pinocchio::computeFrameJacobian(model, data, q, frame_id_to_use, J);
+
+    // For some reasons we should rotate the jacobian
+    Eigen::MatrixXd rotateJacobian(6,6); rotateJacobian.setZero();
+    rotateJacobian.block(0,0,3,3) = data.oMf[frame_id_to_use].rotation();
+    rotateJacobian.block(3,3,3,3) = data.oMf[frame_id_to_use].rotation();
     J = rotateJacobian * J;
 
     Eigen::Matrix<double, 6, 1> task_velocity = J*qdot;

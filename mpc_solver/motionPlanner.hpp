@@ -71,6 +71,12 @@ class MotionPlanner {
 
         Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q);
 
+        Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name);
+
+        Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot);
+
+        Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name);
+
         Eigen::Matrix<double, NDOF, 1> inverse_kinematics(Eigen::Matrix3d orientation, Eigen::Vector3d position);
 
         // Set margins on top of robot constraint. Each margin is the ratio of the initial range to be kept
@@ -277,7 +283,10 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("get_MPC_trajectory", &MotionPlanner<PandaWrapper>::get_MPC_trajectory_wrapper<100>)
         .def("set_target_state_task_space", &MotionPlanner<PandaWrapper>::set_target_state_task_space)
         .def("set_current_state_task_space", &MotionPlanner<PandaWrapper>::set_current_state_task_space)
-        .def("forward_kinematics", &MotionPlanner<PandaWrapper>::forward_kinematics)
+        .def("forward_kinematics", static_cast<Eigen::Matrix<double, 3, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<PandaWrapper>::forward_kinematics))
+        .def("forward_kinematics", static_cast<Eigen::Matrix<double, 3, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<PandaWrapper>::forward_kinematics))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<PandaWrapper>::forward_velocities))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<PandaWrapper>::forward_velocities))
         .def("inverse_kinematics", &MotionPlanner<PandaWrapper>::inverse_kinematics);
 
     py::class_<MotionPlanner<Kuka7Wrapper>>(m, "Kuka7MotionPlanner")
@@ -295,7 +304,10 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("get_MPC_trajectory", &MotionPlanner<Kuka7Wrapper>::get_MPC_trajectory_wrapper<100>)
         .def("set_target_state_task_space", &MotionPlanner<Kuka7Wrapper>::set_target_state_task_space)
         .def("set_current_state_task_space", &MotionPlanner<Kuka7Wrapper>::set_current_state_task_space)
-        .def("forward_kinematics", &MotionPlanner<Kuka7Wrapper>::forward_kinematics)
+        .def("forward_kinematics", static_cast<Eigen::Matrix<double, 3, 1> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<Kuka7Wrapper>::forward_kinematics))
+        .def("forward_kinematics", static_cast<Eigen::Matrix<double, 3, 1> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka7Wrapper>::forward_kinematics))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<Kuka7Wrapper>::forward_velocities))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka7Wrapper>::forward_velocities))
         .def("inverse_kinematics", &MotionPlanner<Kuka7Wrapper>::inverse_kinematics);
 
 
@@ -314,6 +326,9 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("get_MPC_trajectory", &MotionPlanner<Kuka14Wrapper>::get_MPC_trajectory_wrapper<100>)
         .def("set_target_state_task_space", &MotionPlanner<Kuka14Wrapper>::set_target_state_task_space)
         .def("set_current_state_task_space", &MotionPlanner<Kuka14Wrapper>::set_current_state_task_space)
-        .def("forward_kinematics", &MotionPlanner<Kuka14Wrapper>::forward_kinematics)
+        .def("forward_kinematics", static_cast<Eigen::Matrix<double, 3, 1> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<Kuka14Wrapper>::forward_kinematics))
+        .def("forward_kinematics", static_cast<Eigen::Matrix<double, 3, 1> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka14Wrapper>::forward_kinematics))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<Kuka14Wrapper>::forward_velocities))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka14Wrapper>::forward_velocities))
         .def("inverse_kinematics", &MotionPlanner<Kuka14Wrapper>::inverse_kinematics);
 }

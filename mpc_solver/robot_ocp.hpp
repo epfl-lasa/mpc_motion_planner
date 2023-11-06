@@ -35,7 +35,9 @@ using namespace std;
 using Polynomial = polympc::Chebyshev<POLY_ORDER, polympc::GAUSS_LOBATTO, double>;
 using Approximation = polympc::Spline<Polynomial, NUM_SEG>;
 
-POLYMPC_FORWARD_DECLARATION(/*Name*/ minTime_ocp, /*NX*/ 14, /*NU*/ 7, /*NP*/ 1, /*ND*/ 0, /*NG*/ 8, /*TYPE*/ double)
+//POLYMPC_FORWARD_DECLARATION(/*Name*/ minTime_ocp, /*NX*/ 14, /*NU*/ 7, /*NP*/ 1, /*ND*/ 0, /*NG*/ 8, /*TYPE*/ double)
+POLYMPC_FORWARD_DECLARATION(/*Name*/ minTime_ocp, /*NX*/ 14, /*NU*/ 7, /*NP*/ 1, /*ND*/ 0, /*NG*/ 9, /*TYPE*/ double)
+
 /*
 NX : Number of states
 NU : Number of inputs
@@ -155,13 +157,13 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     Eigen::MatrixXd djoint_torque_dtime_f = djoint_torque_dv*q_dot + djoint_torque_da*q_dot_dot;
 
 
-    constraint_t<ad_scalar_t> ineq_constraint;
+    constraint_t<ad_scalar_t> ineq_constraint; // ad means automatic differentiation, using ad_scalar_t = Eigen::AutoDiffScalar<derivatives_t>;
 
 
     // Fill in torque derivatives
     Eigen::Matrix<scalar_t, 1, NX + NU + NP> jac_row;
     jac_row.setZero();
-    for(int i = 0; i < NG-1; i++)
+    for(int i = 0; i < NG-2; i++)                                                                           // for(int i = 0; i < NG-1; i++)
     {   
         // Overwitting with PINOCCHIO data
         jac_row.head(7) = djoint_torque_dq.row(i); // Replace the first 7 elements
@@ -177,20 +179,11 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     // Fill in height derivative
     pinocchio::Data::Matrix6x J(6,7); J.setZero();
 
-    //std::cout << "DEBUT DU PROBLEME" << std::endl;
-
     pinocchio::forwardKinematics(model,data,q);
 
-    //std::cout << "frame_id = " << frame_id << std::endl; // Output : 25
-
-    //pinocchio::updateFramePlacement(model,data,7);
-    pinocchio::updateFramePlacement(model,data,frame_id); // C'EST CETTE FONCTION QUI FAIT PLANTER
-
-    //std::cout << "B" << std::endl;
+    pinocchio::updateFramePlacement(model,data,frame_id);
 
     pinocchio::computeFrameJacobian(model, data, q, frame_id, J);
-
-    //std::cout << "FIN DU PROBLEME" << std::endl;
 
     // For some reasons we should rotate the jacobian
     Eigen::MatrixXd rotateJacobian(6,6); rotateJacobian.setZero();
@@ -198,14 +191,29 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     rotateJacobian.block(3,3,3,3) = data.oMf[frame_id].rotation();
     J = rotateJacobian * J;
 
-    //std::cout << "K" << std::endl;
-
-    ineq_constraint(NG-1).value() = data.oMf[frame_id].translation()[2];
+    ineq_constraint(NG-2).value() = data.oMf[frame_id].translation()[2];                    // ineq_constraint(NG-1).value() = data.oMf[frame_id].translation()[2];
     jac_row = Eigen::Matrix<scalar_t, 1, NX + NU + NP>::Zero();
     jac_row.head(7) = J.row(2);
-    ineq_constraint(NG-1).derivatives() = jac_row;
+    ineq_constraint(NG-2).derivatives() = jac_row;                                          // ineq_constraint(NG-1).derivatives() = jac_row;
 
-    //std::cout << "constraint ad scalar_t fin" << std::endl;
+
+    // Velocity constraints on the end effector
+    pinocchio::Data::Matrix6x J_partial(6, 7); J_partial.setZero();
+    int frame_last_link_id = model.getFrameId("panda_link7");
+    pinocchio::updateFramePlacement(model,data,frame_last_link_id);
+    pinocchio::computeFrameJacobian(model, data, q, frame_last_link_id, J_partial);
+
+    //std::cout << "J_partial : " << J_partial << std::endl;
+    //std::cout << "q_dot.head(6) : " << q_dot.head(6) << std::endl;
+
+    Eigen::MatrixXd v = J_partial * q_dot;
+
+    //std::cout << "v.block(0, 0, 3, 1) : " << v.block(0, 0, 3, 1) << std::endl;
+    // std::cout << "v.block(0, 0, 3, 1).squaredNorm() :" << v.block(0, 0, 3, 1).squaredNorm() << std::endl;
+
+    ineq_constraint(NG-1).value() = v.block(0, 0, 3, 1).squaredNorm();
+
+    //std::cout << "Finished" << std::endl;
 
     return ineq_constraint;
 }

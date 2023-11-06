@@ -89,6 +89,21 @@ Eigen::Matrix<double, 3, 1> MotionPlanner<RobotWrapper>::forward_kinematics(Eige
 }
 
 template <typename RobotWrapper>
+Eigen::Matrix<double, 3, 1> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
+    return robot.forward_kinematics(q, frame_name);
+}
+
+template <typename RobotWrapper>
+Eigen::Matrix<double, 6, 1> MotionPlanner<RobotWrapper>::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot){
+    return robot.forward_velocities(q, qdot);
+}
+
+template <typename RobotWrapper>
+Eigen::Matrix<double, 6, 1> MotionPlanner<RobotWrapper>::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name){
+    return robot.forward_velocities(q, qdot, frame_name);
+}
+
+template <typename RobotWrapper>
 Eigen::Matrix<double, NDOF, 1> MotionPlanner<RobotWrapper>::inverse_kinematics(Eigen::Matrix3d orientation, Eigen::Vector3d position){
     return robot.inverse_kinematic(orientation, position);
 }
@@ -121,7 +136,7 @@ void MotionPlanner<RobotWrapper>::set_constraint_margins(double margin_position,
     mpc.parameters_bounds(lbp, ubp);
 
     // Non-linear torque constraints + height constraint
-    set_min_height(robot.min_height);
+    set_min_height(robot.min_height);                            // set_min_height(robot.min_height);
 
     // ---------- Ruckig constraints ---------- //
     Matrix<double, 7, 1>::Map(input.max_velocity.data() ) = margin_velocity*robot.max_velocity;
@@ -133,8 +148,8 @@ template <typename RobotWrapper>
 void MotionPlanner<RobotWrapper>::set_min_height(double min_height){
 
     // Non-linear torque constraints + height constraint
-    mpc_t::constraint_t lbg; lbg << -this->margin_torque_*robot.max_torque, min_height;
-    mpc_t::constraint_t ubg; ubg <<  this->margin_torque_*robot.max_torque, inf;
+    mpc_t::constraint_t lbg; lbg << -this->margin_torque_*robot.max_torque, min_height, -robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
+    mpc_t::constraint_t ubg; ubg <<  this->margin_torque_*robot.max_torque, inf, robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
     mpc.constraints_bounds(lbg, ubg);
 
     //std::cout << lbg.transpose() << std::endl;
@@ -266,7 +281,10 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
 
     mpc.settings().line_search_max_iter = line_search_max_iter_in;
     mpc.settings().max_iter = sqp_max_iter;
+
+    std::cout << "Before mpc.solve()" << std::endl;
     mpc.solve(); 
+    std::cout << "After mpc.solve()" << std::endl;
 
     auto stop = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
