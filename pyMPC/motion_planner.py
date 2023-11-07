@@ -17,6 +17,8 @@ class RobotModel(enum.Enum):
     Kuka14 = 3
 
 CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
+LINE_SEARCH_MAX_ITER = 10
+SQP_MAX_ITER = 3
 
 #----------------------------------------------------------------------------------------------#
 
@@ -27,20 +29,28 @@ class Trajectory():
             self._t, self._q, self._qdot, self._qddot, self._tau = reshape_traj_from_tupple_to_numpy(input_traj)
         self._ruckig = ruckig
 
-    def _q_cons_satisfied(self) -> bool:
-        pass
+    def _state_cons_satisfied(self, state:np.ndarray, limits:np.ndarray) -> np.ndarray:
+        state_cons_satisfied = np.ndarray(shape=(state.shape[0]))
+        for i, traj_i_state in enumerate(state):
+            traj_i_state_cons_not_satisfied = np.logical_or(traj_i_state > limits[:, 1], traj_i_state < limits[:, 0])
+            traj_i_state_cons_not_satisfied = np.sum(traj_i_state_cons_not_satisfied, axis=-1)
+            state_cons_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied) == 0
+        return state_cons_satisfied
 
-    def _qdot_cons_satisfied(self) -> bool:
-        pass
+    def _q_cons_satisfied(self) -> np.ndarray:
+        return self._state_cons_satisfied(self._q, self._utils.X_limits)
 
-    def _qddot_cons_satisfied(self) -> bool:
-        pass
+    def _qdot_cons_satisfied(self) -> np.ndarray:
+        return self._state_cons_satisfied(self._qdot, self._utils.V_limits)
 
-    def _tau_cons_satisfied(self) -> bool:
-        pass
+    def _qddot_cons_satisfied(self) -> np.ndarray:
+        return self._state_cons_satisfied(self._qddot, self._utils.A_limits)
 
-    def _non_lin_cons_satisfied(self) -> bool:
-        pass
+    def _tau_cons_satisfied(self) -> np.ndarray:
+        T_limits = np.ndarray(shape=(self._tau.shape[-1], 2))
+        T_limits[:, 0] = -self._utils.T_limits
+        T_limits[:, 1] = self._utils.T_limits
+        return self._state_cons_satisfied(self._tau, T_limits)
 
     def _set_t(self, t:np.ndarray) -> None:
         self._t = t
@@ -57,7 +67,7 @@ class Trajectory():
     def _set_tau(self, tau:np.ndarray) -> None:
         self._tau = tau
 
-    def __index__(self, slice): # Overload indexing function []
+    def __getitem__(self, slice): # Overload indexing function []
         if isinstance(slice, str):
             if slice=="t":
                 return self._t
@@ -94,7 +104,6 @@ class Trajectory():
 
         return result
 
-
     def __len__(self):
         return self._t.shape[0]
 
@@ -130,10 +139,6 @@ class Trajectory():
         return self._tau_cons_satisfied()
     
     @property
-    def non_lin_cons_satisfied(self):
-        return self._non_lin_cons_satisfied()
-
-    @property
     def t(self):
         return self._t
     
@@ -152,6 +157,10 @@ class Trajectory():
     @property
     def tau(self):
         return self._tau
+    
+    @property
+    def shape(self):
+        return self._t.shape
 
 #----------------------------------------------------------------------------------------------#
 
@@ -192,9 +201,9 @@ class MotionPlanner():
         
     def get_trajectory(self, ruckig:bool=False) -> Trajectory:
         if ruckig:
-            traj = Trajectory(self._motion_planner.get_ruckig_trajectory(), self._robot_utils, ruckig=True)
+            traj = Trajectory(self._robot_utils, input_traj=self._motion_planner.get_ruckig_trajectory(), ruckig=True)
         else:        
-            traj = Trajectory(self._motion_planner.get_MPC_trajectory(), self._robot_utils, ruckig=False)
+            traj = Trajectory(self._robot_utils, input_traj=self._motion_planner.get_MPC_trajectory(), ruckig=False)
         
         return traj
 
@@ -207,7 +216,7 @@ class MotionPlanner():
                 time_to_solve = time.time() - start
             else:
                 start = time.time()
-                self._motion_planner.solve_trajectory(ruckig_as_warm_start)
+                self._motion_planner.solve_trajectory(ruckig_as_warm_start, SQP_MAX_ITER, LINE_SEARCH_MAX_ITER)
                 time_to_solve = time.time() - start
 
             status, iter = self._motion_planner.get_mpc_info()
@@ -239,7 +248,7 @@ class MotionPlanner():
     
 #----------------------------------------------------------------------------------------------#
 
-def reshape_traj_from_tupple_to_numpy(self, traj_tupple):
+def reshape_traj_from_tupple_to_numpy(traj_tupple):
     t, q, qdot, qddot, tau = traj_tupple
 
     # Adapt dimensions : Traj are stored as [Ntraj, Npts, NDOF]
