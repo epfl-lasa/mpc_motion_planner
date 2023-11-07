@@ -31,12 +31,12 @@ class Kuka7Wrapper : public ArmRobotWrapper {
     Kuka7Wrapper(std::string urdf) : ArmRobotWrapper(urdf, "grabber_link") {};
 
     // Limits from https://frankaemika.github.io/docs/control_parameters.html
-    Eigen::Matrix<double, NDOF, 1> min_position {-2.9671, -2.0943, -2.9671, -2.0943, -2.9671, -2.0943, -3.0543};
-    Eigen::Matrix<double, NDOF, 1> max_position {2.9671, 2.0943, 2.9671, 2.0943, 2.9671, 2.0943, 3.0543};
-    Eigen::Matrix<double, NDOF, 1> max_velocity {1.7104, 1.7104, 1.7453, 2.2689, 2.4434, 3.1416, 3.1416};                         // OK
-    Eigen::Matrix<double, NDOF, 1> max_acceleration {15.0, 7.5, 10.0, 12.5, 15.0, 20.0, 20.0};
-    Eigen::Matrix<double, NDOF, 1> max_jerk {7500, 3750, 5000, 6250, 7500, 10000, 10000};
-    Eigen::Matrix<double, NDOF, 1> max_torque {176, 176, 110, 110, 110, 40, 40};
+    Eigen::Matrix<double, NDOF, 1> min_position = {-2.9671, -2.0943, -2.9671, -2.0943, -2.9671, -2.0943, -3.0543};
+    Eigen::Matrix<double, NDOF, 1> max_position = {2.9671, 2.0943, 2.9671, 2.0943, 2.9671, 2.0943, 3.0543};
+    Eigen::Matrix<double, NDOF, 1> max_velocity = {1.7104, 1.7104, 1.7453, 2.2689, 2.4434, 3.1416, 3.1416};                         // OK
+    Eigen::Matrix<double, NDOF, 1> max_acceleration = {15.0, 7.5, 10.0, 12.5, 15.0, 20.0, 20.0};
+    Eigen::Matrix<double, NDOF, 1> max_jerk = {7500, 3750, 5000, 6250, 7500, 10000, 10000};
+    Eigen::Matrix<double, NDOF, 1> max_torque = {176, 176, 110, 110, 110, 40, 40};
     double max_torqueDot {1000};
 
     double max_linear_velocity {1.7};
