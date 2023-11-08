@@ -31,7 +31,11 @@ Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`)
 ```
 cp mpc_solver/motion_planning_lib.cpython-38-x86_64-linux-gnu.so <path_to_venv>/myVenv/lib/python3.10/site-packages
 ```
-If you are not using python 3.10, modify this command accordingly. To use the library within your project, write at the top of it:
+If you are not using python 3.10, modify this command accordingly. Then activate your virtual environment (`source myVenv/bin/activate`) and install the requirements : 
+
+`pip install -r requirements.txt`
+
+To use the library within your project, write at the top of it:
 
 ```
 import sys
