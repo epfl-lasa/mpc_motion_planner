@@ -30,6 +30,16 @@ class Trajectory():
         self._ruckig = ruckig
 
     def _state_cons_satisfied(self, state:np.ndarray, limits:np.ndarray) -> np.ndarray:
+        """
+        Check constraints satisfaction for a given state and its limits.
+        _______________________________________________________________________________________________________________
+        Input :
+            state   (Ntraj x NPTS x NDOF)   :   np.ndarray containing the actual state values
+            limits  (NDOF, 2)               :   np.ndarray of dim  representing the state min and max acceptable values
+        Return :
+            state_cons_satisfied    (Ntraj) :   np.ndarray (bool) containing a boolean that indicates
+                                                wheter or not constraints are satisfied.
+        """
         state_cons_satisfied = np.ndarray(shape=(state.shape[0]))
         for i, traj_i_state in enumerate(state):
             traj_i_state_cons_not_satisfied = np.logical_or(traj_i_state > limits[:, 1], traj_i_state < limits[:, 0])
@@ -38,33 +48,109 @@ class Trajectory():
         return state_cons_satisfied
 
     def _q_cons_satisfied(self) -> np.ndarray:
+        """
+        Check constraints satisfaction for joint positions.
+        _______________________________________________________________________________________________________________
+        Input :
+            None
+        Return :
+            _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
+                                                wheter or not joint position constraints are satisfied.
+        """
         return self._state_cons_satisfied(self._q, self._utils.X_limits)
 
     def _qdot_cons_satisfied(self) -> np.ndarray:
+        """
+        Check constraints satisfaction for joint velocities.
+        _______________________________________________________________________________________________________________
+        Input :
+            None
+        Return :
+            _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
+                                                wheter or not joint velocity constraints are satisfied.
+        """
         return self._state_cons_satisfied(self._qdot, self._utils.V_limits)
 
     def _qddot_cons_satisfied(self) -> np.ndarray:
+        """
+        Check constraints satisfaction for joint accelerations.
+        _______________________________________________________________________________________________________________
+        Input :
+            None
+        Return :
+            _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
+                                                wheter or not joint acceleration constraints are satisfied.
+        """
         return self._state_cons_satisfied(self._qddot, self._utils.A_limits)
 
     def _tau_cons_satisfied(self) -> np.ndarray:
+        """
+        Check constraints satisfaction for joint torques.
+        _______________________________________________________________________________________________________________
+        Input :
+            None
+        Return :
+            _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
+                                                wheter or not joint torque constraints are satisfied.
+        """
         T_limits = np.ndarray(shape=(self._tau.shape[-1], 2))
         T_limits[:, 0] = -self._utils.T_limits
         T_limits[:, 1] = self._utils.T_limits
         return self._state_cons_satisfied(self._tau, T_limits)
 
     def _set_t(self, t:np.ndarray) -> None:
+        """
+        Set value of the time vector.
+        _______________________________________________________________________________________________________________
+        Input :
+            t   (Ntraj, NPTS)  :    np.ndarray (float) containing the time steps for each trajectory
+        Return :
+            None
+        """
         self._t = t
 
     def _set_q(self, q:np.ndarray) -> None:
+        """
+        Set value of the joint position vector.
+        _______________________________________________________________________________________________________________
+        Input :
+            q   (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint positions for each trajectory
+        Return :
+            None
+        """
         self._q = q
 
     def _set_qdot(self, qdot:np.ndarray) -> None:
+        """
+        Set value of the joint velocity vector.
+        _______________________________________________________________________________________________________________
+        Input :
+            qdot    (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint velocities for each trajectory
+        Return :
+            None
+        """
         self._qdot = qdot
 
     def _set_qddot(self, qddot:np.ndarray) -> None:
+        """
+        Set value of the joint acceleration vector.
+        _______________________________________________________________________________________________________________
+        Input :
+            qddot   (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint accelerations for each trajectory
+        Return :
+            None
+        """
         self._qddot = qddot
 
     def _set_tau(self, tau:np.ndarray) -> None:
+        """
+        Set value of the joint torque vector.
+        _______________________________________________________________________________________________________________
+        Input :
+            tau (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint torques for each trajectory
+        Return :
+            None
+        """
         self._tau = tau
 
     def __getitem__(self, slice): # Overload indexing function []
@@ -119,8 +205,8 @@ class Trajectory():
         qdot_cons = self._qdot_cons_satisfied()
         qddot_cons = self._qddot_cons_satisfied()
         tau_cons = self._tau_cons_satisfied()
-        non_lin_cons = self._non_lin_cons_satisfied()
-        return q_cons and qdot_cons and qddot_cons and tau_cons and non_lin_cons
+        
+        return np.logical_and(np.logical_and(q_cons,qdot_cons), np.logical_and(qddot_cons, tau_cons))
         
     @property
     def q_cons_satisfied(self):
@@ -207,7 +293,8 @@ class MotionPlanner():
         
         return traj
 
-    def solve(self, ruckig_as_warm_start:bool=True, ruckig:bool=False) -> dict:
+    def solve(self, ruckig_as_warm_start:bool=True, ruckig:bool=False, sqp_max_iter:int=SQP_MAX_ITER, line_search_max_iter:int=LINE_SEARCH_MAX_ITER) -> dict:
+        """ Help for solve function """
         if self._x0 is not None and self._xd is not None:
             self._motion_planner.set_constraint_margins(*self._cons_margins)
             if ruckig:
@@ -216,7 +303,7 @@ class MotionPlanner():
                 time_to_solve = time.time() - start
             else:
                 start = time.time()
-                self._motion_planner.solve_trajectory(ruckig_as_warm_start, SQP_MAX_ITER, LINE_SEARCH_MAX_ITER)
+                self._motion_planner.solve_trajectory(ruckig_as_warm_start, sqp_max_iter, line_search_max_iter)
                 time_to_solve = time.time() - start
 
             status, iter = self._motion_planner.get_mpc_info()

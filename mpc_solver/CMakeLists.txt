@@ -14,14 +14,14 @@ find_package(ruckig REQUIRED)
 
 
 add_definitions(-DEIGEN_STACK_ALLOCATION_LIMIT=1000000) # 1 MB 
-include_directories(../submodules/polympc/src ../robot_utils ../submodules/pybind11/include)
+include_directories(../submodules/polympc/src ../robot_utils ../submodules/pybind11/include ../third_party)
 
 # Original library for linking with executables
 #add_library(motionPlannerLib SHARED motionPlanner.cpp ../robot_utils/pandaWrapper.cpp)
 #add_library(motionPlannerLib SHARED motionPlanner.cpp ../robot_utils/kukaWrapper.cpp)
 add_library(motionPlannerLib SHARED motionPlanner.cpp ../robot_utils/armRobotWrapper.cpp)
 target_link_libraries(motionPlannerLib Eigen3::Eigen pinocchio::pinocchio ruckig::ruckig ${Python_LIBRARIES})
-target_include_directories(motionPlannerLib PUBLIC ${PYTHON_INCLUDE_DIRS} "." "../submodules/polympc/src" "../robot_utils")
+target_include_directories(motionPlannerLib PUBLIC ${PYTHON_INCLUDE_DIRS} "." "../submodules/polympc/src" "../robot_utils" "../third_party")
 
 
 
