@@ -296,6 +296,7 @@ class MotionPlanner():
     def solve(self, ruckig_as_warm_start:bool=True, ruckig:bool=False, sqp_max_iter:int=SQP_MAX_ITER, line_search_max_iter:int=LINE_SEARCH_MAX_ITER) -> dict:
         """ Help for solve function """
         if self._x0 is not None and self._xd is not None:
+            print("before cons_margins")
             self._motion_planner.set_constraint_margins(*self._cons_margins)
             if ruckig:
                 start = time.time()
@@ -303,6 +304,7 @@ class MotionPlanner():
                 time_to_solve = time.time() - start
             else:
                 start = time.time()
+                print("just before in py")
                 self._motion_planner.solve_trajectory(ruckig_as_warm_start, sqp_max_iter, line_search_max_iter)
                 time_to_solve = time.time() - start
 
