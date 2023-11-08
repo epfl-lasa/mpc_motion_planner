@@ -7,12 +7,13 @@ benchmark_mpc_vh
 .npy
 .npz
 .pt
-pyMPC/descriptions
 misc
 learning_meaningful_metrics
 pyMPC/dist
+pyMPC/setup.py
 pyMPC/build
 pyMPC/pyMPC.egg-info
 pyMPC/debug.py
 pyMPC/eval_time_to_converge.py
 pyMPC/plot_utils.py
+pyMPC/__pycache__

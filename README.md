@@ -26,14 +26,17 @@ make
 
 ### Install python library
 
-Create a virtual environment, for instance 'myVirtualEnv' and run :
+Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`) and run :
 
 ```
-cp build/mpc_solver/motion_planning_lib.cpython-38-x86_64-linux-gnu.so <path_to_venv>/myVirtualEnv/lib/python3.10/site-packages
+cp mpc_solver/motion_planning_lib.cpython-38-x86_64-linux-gnu.so <path_to_venv>/myVenv/lib/python3.10/site-packages
 ```
-If you are not using python 3.10, modify this command accordingly. Activate you virtual environment and run :
+If you are not using python 3.10, modify this command accordingly. To use the library within your project, write at the top of it:
 
 ```
-pip install pyMPC
-python3 setup.py sdist
+import sys
+sys.path.append("/<path_to>/mpc_motion_planner")
+from pyMPC.motion_planner import MotionPlanner, Trajectory, RobotModel
 ```
+
+A [Jupyter Notebook](pyMPC/howToUse.ipynb) presents the main features of the library and how to use it.
