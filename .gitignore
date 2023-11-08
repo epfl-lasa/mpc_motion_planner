@@ -14,6 +14,5 @@ pyMPC/dist
 pyMPC/build
 pyMPC/pyMPC.egg-info
 pyMPC/debug.py
-pyMPC/setup.py
 pyMPC/eval_time_to_converge.py
 pyMPC/plot_utils.py
