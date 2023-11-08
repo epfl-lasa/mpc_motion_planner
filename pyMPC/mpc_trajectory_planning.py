@@ -19,7 +19,7 @@ from .plot_utils import save_trajectory, plot_trajectory
 
 
 #sys.path.append(os.path.join(os.getcwd(), '../'))
-sys.path.append("/home/stephen/Desktop/LASA/epfl-lasa/mpc_motion_planner/")
+#sys.path.append("/home/stephen/Desktop/LASA/epfl-lasa/mpc_motion_planner/")
 
 #-----------------------------------------------------------------------------------------------------------------------#
 
