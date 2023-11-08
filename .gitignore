@@ -9,6 +9,7 @@ benchmark_mpc_vh
 .pt
 misc
 learning_meaningful_metrics
+pyMPC/descriptions
 pyMPC/dist
 pyMPC/setup.py
 pyMPC/build

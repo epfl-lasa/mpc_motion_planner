@@ -1,12 +1,14 @@
 import motion_planning_lib as mpl
 import numpy as np
 import enum, time
+import sys
 
 """ CONVENTION :
 Trajectories dimensions are always in this order : (Ntraj, Npts, NDOF)
 Where Ntraj is the number of different trajectories, Npts is the number of time-steps and NDOF the number of degrees of freedom
 """
 
+sys.path.append("/home/stephen/Desktop/LASA/epfl-lasa/mpc_motion_planner/pyMPC")
 import descriptions.robot_descriptions.franka_panda_bullet.franka_panda as panda_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 as kuka7_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_14 as kuka14_utils
@@ -260,6 +262,7 @@ class MotionPlanner():
             self._motion_planner = mpl.Kuka7MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
         elif robotModel == RobotModel.Kuka14:
             self._robot_utils = kuka14_utils
+            print(self._robot_utils.MPC_ROBOT_URDF_PATH)
             self._motion_planner = mpl.Kuka14MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
 
         self._x0, self._xd = None, None
