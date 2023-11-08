@@ -17,7 +17,7 @@ We use [polyMPC](https://gitlab.epfl.ch/listov/polympc) as the MPC library and [
 Clone the repository with the submodules, then compile the examples:
 
 ```
-git clone --branch-python_binding --recurse-submodules https://github.com/AlbericDeLajarte/mpc_motion_planner.git 
+git clone --branch python_binding --recurse-submodules https://github.com/AlbericDeLajarte/mpc_motion_planner.git 
 
 cd mpc_motion_planner && mkdir build && cd build
 cmake ..
