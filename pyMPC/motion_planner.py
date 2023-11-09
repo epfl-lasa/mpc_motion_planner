@@ -364,8 +364,7 @@ class MotionPlanner():
         _______________________________________________________________________________________________________________
         Input :
             *ruckig_as_warm_state (1)   :   bool to choose wheter or not ruckig is used as a warm start for polympc
-            *ruckig (1)                 :   bool to choose between the polympc trajectory (ruckig=False) or the ruckig 
-                                            one (ruckig=True)
+            *ruckig (1)                 :   bool to choose between the polympc trajectory (ruckig=False) or the ruckig one (ruckig=True)
             *sqp_max_iter (1)           :   int to choose the max number of SQP iterations to use in polympc
             *line_search_max_iter (1)   :   int to choose the max number of line search iterations to use in polympc
         Return :
@@ -406,6 +405,42 @@ class MotionPlanner():
         self._cons_margins = cons_margins
         self._motion_planner.set_constraints_margins(*cons_margins)
     
+    def forward_kinematics(self, q:np.ndarray, qdot:np.ndarray=None) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Compute the end-effector position given the joint positions. If the joint velocities are also given,
+        this method will also provide the end-effector velocity.
+        _______________________________________________________________________________________________________________
+        Input :
+            q (Npts, NDOF) or (NDOF)        :   np.ndarray representing the joint positions
+            *qdot (Npts, NDOF) or (NDOF)    :   np.ndarray (optional) representing the joint velocities
+        Return :
+            ee_pos (3)  :   np.ndarray that contains the 3D end effector position
+            ee_vel (3)  :   np.ndarray that contains the 3D end effector velocity (if qdot is provided)
+        """
+        assert(len(q.shape) < 3)
+        # Compute forward kinematics for a single pair of (q, qdot)
+        if len(q.shape) == 1:
+            ee_pos = self._motion_planner.forward_kinematics(q)
+            ee_vel = None
+            if qdot is not None:
+                ee_vel = self._motion_planner.forward_velocities(q, qdot)
+
+        # Compute forward kinematics for a full trajectory of (q, qdot)
+        elif len(q.shape) == 2:
+            ee_pos = np.ndarray(shape=(q.shape[0], 3))
+            if qdot is not None:
+                ee_vel = np.ndarray(shape=(q.shape[0], 3))
+                for i, (q_i, qdot_i) in enumerate(zip(q, qdot)):
+                    ee_pos[i] = self._motion_planner.forward_kinematics(q_i)
+                    ee_vel_temp = self._motion_planner.forward_velocities(q_i, qdot_i)
+                    ee_vel[i] = ee_vel_temp[0:3] # Only keep xyz velocity
+            else:
+                ee_vel = None
+                for i, q_i in enumerate(q):
+                    ee_pos[i] = self._motion_planner.forward_kinematics(q_i)
+
+        return ee_pos, ee_vel    
+
     @property
     def info(self):
         if self._info is not None:
