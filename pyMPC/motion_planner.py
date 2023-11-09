@@ -154,7 +154,15 @@ class Trajectory():
         """
         self._tau = tau
 
-    def __getitem__(self, slice): # Overload indexing function []
+    def __getitem__(self, slice):
+        """
+        Access items of the object using brackets []
+        _______________________________________________________________________________________________________________
+        Input :
+            slice (1)   : str or int, that specifies which value to access
+        Return :
+            -           : np.ndarray (float), the desired value specified by <slice>  
+        """
         if isinstance(slice, str):
             if slice=="t":
                 return self._t
@@ -173,9 +181,18 @@ class Trajectory():
             
     def __add__(self, other):
         """
-        Defines addition as concatenation of the trajectories
+        Defines "+" operator as a concatenation. For two given Trajectory object traj1, traj2, the operation
+        traj1 + traj2 returns a new trajectory object that contains both traj1 and traj2 data.
+        For instance, if traj1.shape[0] = N1 and traj2.shape[0] = N2, then traj.shape[0] = N1 + N2, as the "+"
+        operator act as a concatenation in this context.
+        _______________________________________________________________________________________________________________
+        Input :
+            other : Trajectory object
+        Return :
+            result : Trajectory object that contains both <self> and <other>  
         """
         assert isinstance(other, Trajectory)
+        assert(self._t.shape[1] == other._t.shape[1])
         t = np.concatenate((self._t, other.t), axis=0)
         q = np.concatenate((self._q, other.q), axis=0)
         qdot = np.concatenate((self._qdot, other.qdot), axis=0)
@@ -192,16 +209,35 @@ class Trajectory():
         return result
 
     def __len__(self):
+        """
+        Defines the object length as the number of concatenated trajectories stored within it.
+        _______________________________________________________________________________________________________________
+        Input :
+            None
+        Return :
+            len (1) :   Number of concatenated trajectories
+        """
         return self._t.shape[0]
 
-    def __eq__(self, other): # Overload == function
+    def __eq__(self, other):
+        """Overload == function""" 
         raise NotImplementedError("######## Trajectory Error : Unvalid operation == for Trajectory class ########")
 
-    def __ne__(self, other): # Overload != function
+    def __ne__(self, other):
+        """Overload != function"""
         raise NotImplementedError("######## Trajectory Error : Unvalid operation != for Trajectory class ########")
 
     @property
-    def all_cons_satisfied(self):
+    def all_cons_satisfied(self) -> np.ndarray:
+        """
+        Check that q, qdot, qddot and tau constraints are satisfied. Implemented as a property, therefore not callable.
+        _______________________________________________________________________________________________________________
+        Input :
+            None
+        Return :
+            all_cons_satisfied (Ntraj) :    np.ndarray (bool) containing True if all the constraints are satisfied, and
+                                            False otherwise, for each trajectory.
+        """
         q_cons = self._q_cons_satisfied()
         qdot_cons = self._qdot_cons_satisfied()
         qddot_cons = self._qddot_cons_satisfied()
@@ -267,7 +303,15 @@ class MotionPlanner():
         self._x0, self._xd = None, None
         self._info, self._cons_margins = None, CONS_MARGINS
 
-    def set_target_state(self, xd:tuple) -> None:
+    def set_target_state(self, xd:tuple[np.ndarray, np.ndarray, np.ndarray]) -> None:
+        """
+        Set the target state xd = (q, dq/dt, d²q/dt²) for the motion planner to reach.
+        _______________________________________________________________________________________________________________
+        Input :
+            xd  (3) :   tuple of np.ndarary that contains the desired joint positions, velocities and accelerations.
+        Return :
+            None
+        """
         assert(len(xd) == 3)
         for xd_i in xd:
             assert(len(xd_i.shape) == 1)
@@ -276,8 +320,15 @@ class MotionPlanner():
         self._xd = xd
         self._motion_planner.set_target_state(xd[0], xd[1], xd[2])
 
-
-    def set_current_state(self, x0:tuple) -> None:
+    def set_current_state(self, x0:tuple[np.ndarray, np.ndarray, np.ndarray]) -> None:
+        """
+        Set the current state x0 = (q, dq/dt, d²q/dt²) for the motion planner to start from.
+        _______________________________________________________________________________________________________________
+        Input :
+            x0  (3) :   tuple of np.ndarary that contains the current joint positions, velocities and accelerations.
+        Return :
+            None
+        """
         assert(len(x0) == 3)
         for x0_i in x0:
             assert(len(x0_i.shape) == 1)
@@ -286,8 +337,19 @@ class MotionPlanner():
         self._x0 = x0
         self._motion_planner.set_current_state(x0[0], x0[1], x0[2])
 
-        
     def get_trajectory(self, ruckig:bool=False) -> Trajectory:
+        """
+        Get either the trajectory solved using polympc or the trajectory solved with ruckig (if ruckig=True). A
+        trajectory must be available and therefore you should have called the .solve() method at least once before.
+        _______________________________________________________________________________________________________________
+        Input :
+            *ruckig  (1) :  bool to choose between the polympc trajectory (ruckig=False) or the ruckig one (ruckig=True)
+        Return :
+            traj    : Trajectory object that contains the desired trajectory
+        """
+        if self._info is None:
+            raise RuntimeError("You must have called the .solve method before calling the .get_trajectory one")
+
         if ruckig:
             traj = Trajectory(self._robot_utils, input_traj=self._motion_planner.get_ruckig_trajectory(), ruckig=True)
         else:        
@@ -296,7 +358,20 @@ class MotionPlanner():
         return traj
 
     def solve(self, ruckig_as_warm_start:bool=True, ruckig:bool=False, sqp_max_iter:int=SQP_MAX_ITER, line_search_max_iter:int=LINE_SEARCH_MAX_ITER) -> dict:
-        """ Help for solve function """
+        """
+        With default arguments, solves the polympc problem using ruckig as a warm start. If ruckig=True, the generated
+        trajectory does only come from ruckig.
+        _______________________________________________________________________________________________________________
+        Input :
+            *ruckig_as_warm_state (1)   :   bool to choose wheter or not ruckig is used as a warm start for polympc
+            *ruckig (1)                 :   bool to choose between the polympc trajectory (ruckig=False) or the ruckig 
+                                            one (ruckig=True)
+            *sqp_max_iter (1)           :   int to choose the max number of SQP iterations to use in polympc
+            *line_search_max_iter (1)   :   int to choose the max number of line search iterations to use in polympc
+        Return :
+            info    :   dictionnary with fields "status" (1 if polympc converged, 0 otherwise), "iter" (number of sqp
+                        iterations to converge) and "time_to_solve".
+        """
         if self._x0 is not None and self._xd is not None:
             #print("before cons_margins")
             self._motion_planner.set_constraint_margins(*self._cons_margins)
@@ -319,6 +394,15 @@ class MotionPlanner():
         return info
     
     def set_constraints_margins(self, cons_margins:list=CONS_MARGINS) -> None:
+        """
+        Set the desired constraints margins to use in the solver.
+        _______________________________________________________________________________________________________________
+        Input :
+            *cons_margins (5)  :    list of float between 0 and 1 that defines the margin w.r.t q, qdot, qddot, torque, 
+                                    jerk
+        Return :
+            None
+        """
         self._cons_margins = cons_margins
         self._motion_planner.set_constraints_margins(*cons_margins)
     
