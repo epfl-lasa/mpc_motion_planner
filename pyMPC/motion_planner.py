@@ -405,7 +405,7 @@ class MotionPlanner():
         self._cons_margins = cons_margins
         self._motion_planner.set_constraints_margins(*cons_margins)
     
-    def forward_kinematics(self, q:np.ndarray, qdot:np.ndarray=None) -> tuple[np.ndarray, np.ndarray]:
+    def __forward_kinematics(self, q:np.ndarray, qdot:np.ndarray=None) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute the end-effector position given the joint positions. If the joint velocities are also given,
         this method will also provide the end-effector velocity.
@@ -417,6 +417,7 @@ class MotionPlanner():
             ee_pos (3)  :   np.ndarray that contains the 3D end effector position
             ee_vel (3)  :   np.ndarray that contains the 3D end effector velocity (if qdot is provided)
         """
+        raise NotImplementedError("######## Error in Trajectory.__forward_kinematics : NOT WORKING YET #########")
         assert(len(q.shape) < 3)
         # Compute forward kinematics for a single pair of (q, qdot)
         if len(q.shape) == 1:
