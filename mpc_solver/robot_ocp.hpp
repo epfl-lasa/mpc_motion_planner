@@ -59,8 +59,8 @@ public:
     pinocchio::Model model;
 
     void init(std::string urdf_path, std::string ee_link_name){
-        std::cout << ee_link_name << std::endl;
-        std::cout << "urdf : " << urdf_path << std::endl;
+        //std::cout << ee_link_name << std::endl;
+        //std::cout << "urdf : " << urdf_path << std::endl;
         pinocchio::urdf::buildModel(urdf_path, model);
         //std::cout << "getFrameId before" << endl;
         //frame_id = model.getFrameId("panda_tool");

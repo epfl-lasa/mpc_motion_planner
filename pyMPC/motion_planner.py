@@ -8,7 +8,6 @@ Trajectories dimensions are always in this order : (Ntraj, Npts, NDOF)
 Where Ntraj is the number of different trajectories, Npts is the number of time-steps and NDOF the number of degrees of freedom
 """
 
-sys.path.append("/home/stephen/Desktop/LASA/epfl-lasa/mpc_motion_planner/pyMPC")
 import descriptions.robot_descriptions.franka_panda_bullet.franka_panda as panda_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 as kuka7_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_14 as kuka14_utils
@@ -262,7 +261,7 @@ class MotionPlanner():
             self._motion_planner = mpl.Kuka7MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
         elif robotModel == RobotModel.Kuka14:
             self._robot_utils = kuka14_utils
-            print(self._robot_utils.MPC_ROBOT_URDF_PATH)
+            #print(self._robot_utils.MPC_ROBOT_URDF_PATH)
             self._motion_planner = mpl.Kuka14MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
 
         self._x0, self._xd = None, None
@@ -299,7 +298,7 @@ class MotionPlanner():
     def solve(self, ruckig_as_warm_start:bool=True, ruckig:bool=False, sqp_max_iter:int=SQP_MAX_ITER, line_search_max_iter:int=LINE_SEARCH_MAX_ITER) -> dict:
         """ Help for solve function """
         if self._x0 is not None and self._xd is not None:
-            print("before cons_margins")
+            #print("before cons_margins")
             self._motion_planner.set_constraint_margins(*self._cons_margins)
             if ruckig:
                 start = time.time()
@@ -307,7 +306,7 @@ class MotionPlanner():
                 time_to_solve = time.time() - start
             else:
                 start = time.time()
-                print("just before in py")
+                #print("just before in py")
                 self._motion_planner.solve_trajectory(ruckig_as_warm_start, sqp_max_iter, line_search_max_iter)
                 time_to_solve = time.time() - start
 

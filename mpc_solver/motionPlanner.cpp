@@ -11,7 +11,7 @@ MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_pa
 
     // ---------- PolyMPC setup ---------- //
     
-    std::cout << "link name in Motion planner constructor " << robot.ee_link_name << std::endl;
+    //std::cout << "link name in Motion planner constructor " << robot.ee_link_name << std::endl;
     mpc.ocp().init(urdf_path, robot.ee_link_name);
 
     // Solver settings
@@ -282,9 +282,9 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
     mpc.settings().line_search_max_iter = line_search_max_iter_in;
     mpc.settings().max_iter = sqp_max_iter;
 
-    std::cout << "Before mpc.solve()" << std::endl;
+    //std::cout << "Before mpc.solve()" << std::endl;
     mpc.solve(); 
-    std::cout << "After mpc.solve()" << std::endl;
+    //std::cout << "After mpc.solve()" << std::endl;
 
     auto stop = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
