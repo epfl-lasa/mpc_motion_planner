@@ -1,5 +1,6 @@
 build
 .vscode
+.venv
 results_images
 optimal_solution.txt
 benchmark_mpc_vh

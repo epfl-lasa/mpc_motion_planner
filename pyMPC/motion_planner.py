@@ -18,6 +18,7 @@ class RobotModel(enum.Enum):
     Kuka14 = 3
 
 CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
+#CONS_MARGINS = [1, 1, 1, 1, 1]
 LINE_SEARCH_MAX_ITER = 10
 SQP_MAX_ITER = 3
 
@@ -30,7 +31,7 @@ class Trajectory():
             self._t, self._q, self._qdot, self._qddot, self._tau = reshape_traj_from_tupple_to_numpy(input_traj)
         self._ruckig = ruckig
 
-    def _state_cons_satisfied(self, state:np.ndarray, limits:np.ndarray) -> np.ndarray:
+    def _state_cons_satisfied(self, state:np.ndarray, limits:np.ndarray, verbose:bool=False) -> np.ndarray:
         """
         Check constraints satisfaction for a given state and its limits.
         _______________________________________________________________________________________________________________
@@ -42,13 +43,20 @@ class Trajectory():
                                                 wheter or not constraints are satisfied.
         """
         state_cons_satisfied = np.ndarray(shape=(state.shape[0]))
+        which_state_not_satisfied = np.ndarray(shape=(state.shape[0], state.shape[-1]))
         for i, traj_i_state in enumerate(state):
             traj_i_state_cons_not_satisfied = np.logical_or(traj_i_state > limits[:, 1], traj_i_state < limits[:, 0])
+            which_state_not_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied, axis=0) > np.zeros(shape=(state.shape[-1],)) # Detect which state does not satisfy cons
             traj_i_state_cons_not_satisfied = np.sum(traj_i_state_cons_not_satisfied, axis=-1)
             state_cons_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied) == 0
+        
+        #print(which_state_not_satisfied)
+        if verbose:
+            return state_cons_satisfied, which_state_not_satisfied
+    
         return state_cons_satisfied
 
-    def _q_cons_satisfied(self) -> np.ndarray:
+    def _q_cons_satisfied(self, verbose:bool=False) -> np.ndarray:
         """
         Check constraints satisfaction for joint positions.
         _______________________________________________________________________________________________________________
@@ -58,9 +66,9 @@ class Trajectory():
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint position constraints are satisfied.
         """
-        return self._state_cons_satisfied(self._q, self._utils.X_limits)
+        return self._state_cons_satisfied(self._q, self._utils.X_limits, verbose=verbose)
 
-    def _qdot_cons_satisfied(self) -> np.ndarray:
+    def _qdot_cons_satisfied(self, verbose:bool=False) -> np.ndarray:
         """
         Check constraints satisfaction for joint velocities.
         _______________________________________________________________________________________________________________
@@ -70,9 +78,9 @@ class Trajectory():
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint velocity constraints are satisfied.
         """
-        return self._state_cons_satisfied(self._qdot, self._utils.V_limits)
+        return self._state_cons_satisfied(self._qdot, self._utils.V_limits, verbose=verbose)
 
-    def _qddot_cons_satisfied(self) -> np.ndarray:
+    def _qddot_cons_satisfied(self, verbose:bool=False) -> np.ndarray:
         """
         Check constraints satisfaction for joint accelerations.
         _______________________________________________________________________________________________________________
@@ -82,9 +90,9 @@ class Trajectory():
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint acceleration constraints are satisfied.
         """
-        return self._state_cons_satisfied(self._qddot, self._utils.A_limits)
+        return self._state_cons_satisfied(self._qddot, self._utils.A_limits, verbose=verbose)
 
-    def _tau_cons_satisfied(self) -> np.ndarray:
+    def _tau_cons_satisfied(self, verbose:bool=False) -> np.ndarray:
         """
         Check constraints satisfaction for joint torques.
         _______________________________________________________________________________________________________________
@@ -97,7 +105,7 @@ class Trajectory():
         T_limits = np.ndarray(shape=(self._tau.shape[-1], 2))
         T_limits[:, 0] = -self._utils.T_limits
         T_limits[:, 1] = self._utils.T_limits
-        return self._state_cons_satisfied(self._tau, T_limits)
+        return self._state_cons_satisfied(self._tau, T_limits, verbose=verbose)
 
     def _set_t(self, t:np.ndarray) -> None:
         """
@@ -247,19 +255,19 @@ class Trajectory():
         
     @property
     def q_cons_satisfied(self):
-        return self._q_cons_satisfied()
+        return self._q_cons_satisfied(verbose=True)
 
     @property
     def qdot_cons_satisfied(self):
-        return self._qdot_cons_satisfied()
+        return self._qdot_cons_satisfied(verbose=True)
 
     @property
     def qddot_cons_satisfied(self):
-        return self._qddot_cons_satisfied()
+        return self._qddot_cons_satisfied(verbose=True)
     
     @property
     def tau_cons_satisfied(self):
-        return self._tau_cons_satisfied()
+        return self._tau_cons_satisfied(verbose=True)
     
     @property
     def t(self):
@@ -329,10 +337,10 @@ class MotionPlanner():
         Return :
             None
         """
-        assert(len(x0) == 3)
+        assert len(x0) == 3, "x0 should be a 3D-tuple!"
         for x0_i in x0:
-            assert(len(x0_i.shape) == 1)
-            assert(x0_i.shape[0] == self._robot_utils.NDOF)
+            assert len(x0_i.shape) == 1, "q, qdot, qddot should be a 1D-numpy array!"
+            assert x0_i.shape[0] == self._robot_utils.NDOF, "Length of q, qdot, qddot must match the number of DOFs!"
         
         self._x0 = x0
         self._motion_planner.set_current_state(x0[0], x0[1], x0[2])

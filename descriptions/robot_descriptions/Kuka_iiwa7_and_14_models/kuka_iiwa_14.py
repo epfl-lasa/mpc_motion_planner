@@ -22,8 +22,8 @@ A_limits = np.array(
 T_limits = np.array(tau_max)
 
 # Define problem parameters
-ul = np.array([2.9671, 2.0944, 2.9671, 2.0944, 2.9671, 2.0944, 3.0543]) - 0.25         # Upper limit
-ll = np.array([-2.9671, -2.0944, -2.9671, -2.0944, -2.9671, -2.0944, -3.0543]) + 0.25   # Lower limit
+ul = np.array([2.9671, 2.0944, 2.9671, 2.0944, 2.9671, 2.0944, 3.0543])        # Upper limit
+ll = np.array([-2.9671, -2.0944, -2.9671, -2.0944, -2.9671, -2.0944, -3.0543]) # Lower limit
 
 MAX_LINEAR_VELOCITY = 1.7
 
