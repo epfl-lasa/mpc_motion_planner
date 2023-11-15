@@ -1,13 +1,14 @@
 import motion_planning_lib as mpl
 import numpy as np
 import enum, time
-import sys
+import os, sys
 
 """ CONVENTION :
 Trajectories dimensions are always in this order : (Ntraj, Npts, NDOF)
 Where Ntraj is the number of different trajectories, Npts is the number of time-steps and NDOF the number of degrees of freedom
 """
 
+sys.path.append(os.path.join(os.getcwd(), '../'))
 import descriptions.robot_descriptions.franka_panda_bullet.franka_panda as panda_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 as kuka7_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_14 as kuka14_utils
@@ -292,6 +293,13 @@ class Trajectory():
     @property
     def shape(self):
         return self._t.shape
+    
+    @property
+    def duration(self):
+        duration = np.ndarray(shape=(self._t.shape[0],))
+        for i, t in enumerate(self._t):
+            duration[i] = t[-1] - t[0]
+        return duration
 
 #----------------------------------------------------------------------------------------------#
 
@@ -450,6 +458,26 @@ class MotionPlanner():
 
         return ee_pos, ee_vel    
 
+    def sample_state(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """TODO"""
+        # Position : rand * (ub - lb) + lb
+        print(self._robot_utils.NDOF)
+        q = np.random.random((self._robot_utils.NDOF,))
+        q *= (self._robot_utils.X_limits[:, 1]-self._robot_utils.X_limits[:, 0])
+        q += self._robot_utils.X_limits[:, 0]
+
+        # Velocity : rand * (ub - lb) + lb
+        qdot = np.random.random((self._robot_utils.NDOF,))
+        qdot *= (self._robot_utils.V_limits[:, 1]-self._robot_utils.V_limits[:, 0])
+        qdot += self._robot_utils.V_limits[:, 0]
+
+        # Acceleration : rand * (ub - lb) + lb
+        qddot = np.random.random((self._robot_utils.NDOF,))
+        qddot *= (self._robot_utils.A_limits[:, 1]-self._robot_utils.A_limits[:, 0])
+        qddot += self._robot_utils.A_limits[:, 0]
+
+        return (q, qdot, qddot)
+    
     @property
     def info(self):
         if self._info is not None:
@@ -464,6 +492,7 @@ class MotionPlanner():
     @property
     def xd(self):
         return self._xd
+    
     
 #----------------------------------------------------------------------------------------------#
 
