@@ -148,8 +148,8 @@ template <typename RobotWrapper>
 void MotionPlanner<RobotWrapper>::set_min_height(double min_height){
 
     // Non-linear torque constraints + height constraint
-    mpc_t::constraint_t lbg; lbg << -this->margin_torque_*robot.max_torque, min_height, -robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
-    mpc_t::constraint_t ubg; ubg <<  this->margin_torque_*robot.max_torque, inf, robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
+    mpc_t::constraint_t lbg; lbg << -this->margin_torque_*robot.max_torque, min_height; //, -robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
+    mpc_t::constraint_t ubg; ubg <<  this->margin_torque_*robot.max_torque, inf; //, robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
     mpc.constraints_bounds(lbg, ubg);
 
     //std::cout << lbg.transpose() << std::endl;
@@ -207,6 +207,8 @@ void MotionPlanner<RobotWrapper>::warm_start_RK(){
     // Compute Ruckig trajectory in an offline manner (outside of the control loop)
     Result result = otg.calculate(input, trajectory);
 
+    // std::cout << "Ruckig status: " << result << std::endl;
+
     mpc_t::traj_state_t x_guess;
     mpc_t::traj_control_t u_guess;
     mpc_t::parameter_t p0; p0 << trajectory.get_duration();
@@ -225,9 +227,11 @@ void MotionPlanner<RobotWrapper>::warm_start_RK(){
 
         i++;
     } 
-    // std::cout << x_guess << std::endl << x_guess.cols() << " " << x_guess.rows() << std::endl;
-    // std::cout << x_guess.reshaped(14, 13)  << std::endl;
-    // std::cout << u_guess.reshaped(7, 13)  << std::endl;
+    /*
+    std::cout << x_guess << std::endl << x_guess.cols() << " " << x_guess.rows() << std::endl;
+    std::cout << x_guess.reshaped(14, 13)  << std::endl;
+    std::cout << u_guess.reshaped(7, 13)  << std::endl;
+    */
     mpc.x_guess(x_guess);	
     mpc.u_guess(u_guess);
     mpc.p_guess(p0); 
@@ -254,10 +258,12 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
     std::cout << "MPC status: " << mpc.info().status.value << "\n";
     std::cout << "Num iterations: " << mpc.info().iter << "\n";
     std::cout << "Solve time: " << dT << " [ms] \n";
-
-    std::cout << "Final time: " << mpc.solution_p().transpose() << std::endl;
-    std::cout << "-------------\n";
     */
+    //std::cout << "Final time: " << mpc.solution_p().transpose() << std::endl;
+    
+    
+    //std::cout << "-------------\n";
+    
 
     // Fix initial and final point at correct place
     mpc_t::traj_state_t x_guess;
@@ -277,10 +283,10 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
      // Warm start with ruckig if needed
     if (use_ruckig_as_warm_start) warm_start_RK();
 
-    auto start = std::chrono::system_clock::now();
-
     mpc.settings().line_search_max_iter = line_search_max_iter_in;
     mpc.settings().max_iter = sqp_max_iter;
+
+    auto start = std::chrono::system_clock::now();
 
     //std::cout << "Before mpc.solve()" << std::endl;
     mpc.solve(); 

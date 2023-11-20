@@ -59,13 +59,21 @@ public:
     pinocchio::Model model;
 
     void init(std::string urdf_path, std::string ee_link_name){
-        //std::cout << ee_link_name << std::endl;
-        //std::cout << "urdf : " << urdf_path << std::endl;
-        pinocchio::urdf::buildModel(urdf_path, model);
+        /*
+        std::cout << ee_link_name << std::endl;
+        std::cout << "urdf : " << urdf_path << std::endl;
+        std::cout << "ee_link_name : " << ee_link_name << std::endl;
+        */
+
+
+       pinocchio::urdf::buildModel(urdf_path, model);
         //std::cout << "getFrameId before" << endl;
         //frame_id = model.getFrameId("panda_tool");
+        
+        
         frame_id = model.getFrameId(ee_link_name);
-        //std::cout << "getFrameId after" << endl;
+        //frame_id = model.getFrameId("panda_tool");
+        //std::cout << "getFrameId after" << frame_id << std::endl;
     }
 
     template<typename T>
@@ -86,6 +94,8 @@ public:
 
         // Scaling dynamic with time parameter        
         xdot *= p(0);
+
+        // std::cout << "p(0) in OCP : " << p(0) << std::endl;
         
         polympc::ignore_unused_var(t);
 

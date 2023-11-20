@@ -10,9 +10,9 @@ ArmRobotWrapper::ArmRobotWrapper(std::string urdf_path, const std::string ee_lin
 
     data = new_data;
 
-    //std::cout << "link name in constructor : " << ee_link_name << std::endl;
-    bool frame_exist;
-    frame_exist = model.existFrame(ee_link_name);
+    //std::cout << "link name in ArmRobotWrapper : " << ee_link_name << std::endl;
+    // bool frame_exist;
+    // frame_exist = model.existFrame(ee_link_name);
     //std::cout << "frame exist ? " << frame_exist << std::endl;
     frame_id = model.getFrameId(ee_link_name);
     //std::cout << "frame_id in ArmRobotWrapper constructor : " << frame_id << std::endl;
@@ -271,4 +271,6 @@ Eigen::Matrix<double, 6, 1> ArmRobotWrapper<robotModel>::forward_velocities(Eige
 template class ArmRobotWrapper<PandaWrapper>;
 template class ArmRobotWrapper<Kuka7Wrapper>;
 */
+
+//template class ArmRobotWrapper<>
 

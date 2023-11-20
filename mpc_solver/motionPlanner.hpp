@@ -128,6 +128,7 @@ class MotionPlanner {
             for (int iPoint = 0; iPoint<=N; iPoint++)
             {
                 time(iPoint) = 1.0/N * iPoint;
+                //std::cout << "time @ i : " << time(iPoint) << std::endl;
                     
                 position_trajectory.col(iPoint) = mpc.solution_x_at(time(iPoint)).head(7);
                 velocity_trajectory.col(iPoint) = mpc.solution_x_at(time(iPoint)).tail(7);
@@ -139,6 +140,7 @@ class MotionPlanner {
                                                             acceleration_trajectory.col(iPoint));
             }
             time *= mpc.solution_p()[0];
+            
         }
 
         // Wrapper for the templated function that returns a tuple of matrices
@@ -153,6 +155,7 @@ class MotionPlanner {
             Eigen::Matrix<double, 7, N+1> torque_trajectory;
            
             get_MPC_trajectory<N>(time, position_trajectory, velocity_trajectory, acceleration_trajectory, torque_trajectory);
+            //std::cout << time << std::endl;
             return std::make_tuple(time, position_trajectory, velocity_trajectory, acceleration_trajectory, torque_trajectory);
         }
 
@@ -205,6 +208,8 @@ class MotionPlanner {
         }
 
         // Warm start MPC with given trajectory (should be regularly time spaced)
+        
+        
         void warm_start(double final_time, MatrixXd position_trajectory, MatrixXd velocity_trajectory, MatrixXd acceleration_trajectory){
             
             int nPoint = position_trajectory.cols();

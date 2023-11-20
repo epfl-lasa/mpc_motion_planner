@@ -10,6 +10,7 @@ benchmark_mpc_vh
 .pt
 misc
 learning_meaningful_metrics
+learning_feasibility
 pyMPC/descriptions
 pyMPC/dist
 pyMPC/setup.py
@@ -19,3 +20,4 @@ pyMPC/debug.py
 pyMPC/eval_time_to_converge.py
 pyMPC/plot_utils.py
 pyMPC/__pycache__
+pyMPC/eval_solution.ipynb

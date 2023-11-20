@@ -108,6 +108,36 @@ class Trajectory():
         T_limits[:, 1] = self._utils.T_limits
         return self._state_cons_satisfied(self._tau, T_limits, verbose=verbose)
 
+    def _power(self, verbose:bool=False) -> np.ndarray:
+        power = np.ndarray(shape=self._t.shape)
+        for i, (qdot, tau) in enumerate(zip(np.abs(self._qdot), np.abs(self._tau))):
+            power[i] = np.sum(qdot * tau, axis=-1)
+        
+        return power
+    
+    def _get_numerical_integral_of(self, state_str, init_state):
+        """TODO"""
+        integral = np.zeros_like(self._q)
+        state_to_integrate = self.__getitem__(state_str)
+        for i, (t_i, traj_state_i) in enumerate(zip(self._t, state_to_integrate)):
+            integral[i, 0] = init_state[i]
+            for k in range(t_i.shape[0] - 1):
+                integral[i, k+1] = integral[i, k] + (traj_state_i[k]+traj_state_i[k+1]) * (t_i[k+1]-t_i[k]) / 2
+
+        return integral
+    
+    def _get_numerical_derivative_of(self, state_str):
+        """TODO"""
+        derivative = np.zeros_like(self._q)
+        state_to_derive = self.__getitem__(state_str)
+        for i, (t_i, traj_state_i) in enumerate(zip(self._t, state_to_derive)):
+            derivative[i, 0] = 0
+            for k in range(t_i.shape[0] - 1):
+                derivative[i, k+1] = (traj_state_i[k+1]-traj_state_i[k]) / (t_i[k+1]-t_i[k])
+
+        return derivative
+
+
     def _set_t(self, t:np.ndarray) -> None:
         """
         Set value of the time vector.
@@ -183,6 +213,8 @@ class Trajectory():
                 return self._qddot
             elif slice=="tau":
                 return self._tau
+            elif slice=="power":
+                return self._power()
         elif isinstance(slice, int):
             return self._t[slice], self._q[slice], self._qdot[slice], self._qddot[slice], self._tau[slice]
         else:
@@ -291,6 +323,10 @@ class Trajectory():
         return self._tau
     
     @property
+    def power(self):
+        return self._power()
+    
+    @property
     def shape(self):
         return self._t.shape
     
@@ -305,6 +341,7 @@ class Trajectory():
 
 class MotionPlanner():
     def __init__(self, robotModel):
+        """ """
         if robotModel == RobotModel.Panda:
             self._robot_utils = panda_utils
             self._motion_planner = mpl.PandaMotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
@@ -318,6 +355,7 @@ class MotionPlanner():
 
         self._x0, self._xd = None, None
         self._info, self._cons_margins = None, CONS_MARGINS
+        #self._motion_planner.set_constraint_margins(*self._cons_margins)
 
     def set_target_state(self, xd:tuple[np.ndarray, np.ndarray, np.ndarray]) -> None:
         """
@@ -334,7 +372,7 @@ class MotionPlanner():
             assert(xd_i.shape[0] == self._robot_utils.NDOF)
         
         self._xd = xd
-        self._motion_planner.set_target_state(xd[0], xd[1], xd[2])
+        self._motion_planner.set_target_state(*xd)
 
     def set_current_state(self, x0:tuple[np.ndarray, np.ndarray, np.ndarray]) -> None:
         """
@@ -351,7 +389,7 @@ class MotionPlanner():
             assert x0_i.shape[0] == self._robot_utils.NDOF, "Length of q, qdot, qddot must match the number of DOFs!"
         
         self._x0 = x0
-        self._motion_planner.set_current_state(x0[0], x0[1], x0[2])
+        self._motion_planner.set_current_state(*x0)
 
     def get_trajectory(self, ruckig:bool=False) -> Trajectory:
         """
@@ -368,7 +406,10 @@ class MotionPlanner():
 
         if ruckig:
             traj = Trajectory(self._robot_utils, input_traj=self._motion_planner.get_ruckig_trajectory(), ruckig=True)
-        else:        
+        else:     
+            # If ruckig was solved before, this will return the ruckig trajectory
+            # because at the end of warm_start_RK, the ruckig trajectory is stored
+            # in the MPC object using mpc.x_guess(x_guess), mpc.u_guess(u_guess), etc..   
             traj = Trajectory(self._robot_utils, input_traj=self._motion_planner.get_MPC_trajectory(), ruckig=False)
         
         return traj
@@ -398,6 +439,7 @@ class MotionPlanner():
                 start = time.time()
                 #print("just before in py")
                 self._motion_planner.solve_trajectory(ruckig_as_warm_start, sqp_max_iter, line_search_max_iter)
+                #self._motion_planner.solve_trajectory(ruckig_as_warm_start)
                 time_to_solve = time.time() - start
 
             status, iter = self._motion_planner.get_mpc_info()
@@ -458,23 +500,49 @@ class MotionPlanner():
 
         return ee_pos, ee_vel    
 
-    def sample_state(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """TODO"""
         # Position : rand * (ub - lb) + lb
-        print(self._robot_utils.NDOF)
+        #print(self._robot_utils.NDOF)
+
+        if use_margins:
+            safety_range_pos = (1-CONS_MARGINS[0])*(self._robot_utils.X_limits[:, 1] - self._robot_utils.X_limits[:, 0])/2
+            xmin = self._robot_utils.X_limits[:, 0] + safety_range_pos
+            xmax = self._robot_utils.X_limits[:, 1] - safety_range_pos
+            vmin = self._robot_utils.V_limits[:, 0] * CONS_MARGINS[1]
+            vmax = self._robot_utils.V_limits[:, 1] * CONS_MARGINS[1]
+            amin = self._robot_utils.A_limits[:, 0] * CONS_MARGINS[2]
+            amax = self._robot_utils.A_limits[:, 1] * CONS_MARGINS[2]
+        else:
+            xmin = self._robot_utils.X_limits[:, 0]
+            xmax = self._robot_utils.X_limits[:, 1]
+            vmin = self._robot_utils.V_limits[:, 0]
+            vmax = self._robot_utils.V_limits[:, 1]
+            amin = self._robot_utils.A_limits[:, 0]
+            amax = self._robot_utils.A_limits[:, 1]
+
+        if speed_feasible_for_ruckig:
+            assert False, "Not implemented yet"
+
+        if acceleration_feasible_for_ruckig:
+            assert False, "Not implemented yet"
+
         q = np.random.random((self._robot_utils.NDOF,))
-        q *= (self._robot_utils.X_limits[:, 1]-self._robot_utils.X_limits[:, 0])
-        q += self._robot_utils.X_limits[:, 0]
+        q *= (xmax - xmin)
+        q += xmin
 
         # Velocity : rand * (ub - lb) + lb
         qdot = np.random.random((self._robot_utils.NDOF,))
-        qdot *= (self._robot_utils.V_limits[:, 1]-self._robot_utils.V_limits[:, 0])
-        qdot += self._robot_utils.V_limits[:, 0]
+        qdot *= (vmax - vmin)
+        qdot += vmin
 
-        # Acceleration : rand * (ub - lb) + lb
-        qddot = np.random.random((self._robot_utils.NDOF,))
-        qddot *= (self._robot_utils.A_limits[:, 1]-self._robot_utils.A_limits[:, 0])
-        qddot += self._robot_utils.A_limits[:, 0]
+        if set_qddot_to_zero:
+            qddot = np.zeros((self._robot_utils.NDOF,))
+        else:
+            # Acceleration : rand * (ub - lb) + lb
+            qddot = np.random.random((self._robot_utils.NDOF,))
+            qddot *= (amax - amin)
+            qddot += amin
 
         return (q, qdot, qddot)
     

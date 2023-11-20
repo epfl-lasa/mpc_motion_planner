@@ -30,6 +30,8 @@ class ArmRobotWrapper {
     Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name);
     Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q);
     Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name);
+    
+    
 
     /*Eigen::Matrix<double, NDOF, 1> min_position;
     Eigen::Matrix<double, NDOF, 1> max_position;
