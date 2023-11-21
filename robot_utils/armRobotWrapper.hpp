@@ -28,8 +28,8 @@ class ArmRobotWrapper {
     Eigen::Matrix<double, NDOF, 1> inverse_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity);
     Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot);
     Eigen::Matrix<double, 6, 1> forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name);
-    Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q);
-    Eigen::Matrix<double, 3, 1> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name);
+    Eigen::Matrix<double, 3, 4> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q);
+    Eigen::Matrix<double, 3, 4> forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name);
     
     
 

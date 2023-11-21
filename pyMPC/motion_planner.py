@@ -21,7 +21,7 @@ class RobotModel(enum.Enum):
 CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
 #CONS_MARGINS = [1, 1, 1, 1, 1]
 LINE_SEARCH_MAX_ITER = 10
-SQP_MAX_ITER = 3
+SQP_MAX_ITER = 2
 
 #----------------------------------------------------------------------------------------------#
 
@@ -136,7 +136,6 @@ class Trajectory():
                 derivative[i, k+1] = (traj_state_i[k+1]-traj_state_i[k]) / (t_i[k+1]-t_i[k])
 
         return derivative
-
 
     def _set_t(self, t:np.ndarray) -> None:
         """
@@ -463,42 +462,73 @@ class MotionPlanner():
         self._cons_margins = cons_margins
         self._motion_planner.set_constraints_margins(*cons_margins)
     
-    def __forward_kinematics(self, q:np.ndarray, qdot:np.ndarray=None) -> tuple[np.ndarray, np.ndarray]:
+    def forward_kinematics(self, q:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
-        Compute the end-effector position given the joint positions. If the joint velocities are also given,
-        this method will also provide the end-effector velocity.
+        Compute the end-effector position given the joint positions.
         _______________________________________________________________________________________________________________
         Input :
-            q (Npts, NDOF) or (NDOF)        :   np.ndarray representing the joint positions
-            *qdot (Npts, NDOF) or (NDOF)    :   np.ndarray (optional) representing the joint velocities
+            q (Npts, NDOF) or (NDOF)    :   np.ndarray representing the joint positions
         Return :
-            ee_pos (3)  :   np.ndarray that contains the 3D end effector position
-            ee_vel (3)  :   np.ndarray that contains the 3D end effector velocity (if qdot is provided)
+            ee_pos (Npts, 3) or (3)         :   np.ndarray that contains the 3D end effector position
+            ee_rot (Npts, 3, 3) or (3, 3)   :   np.ndarray that contains the end effector rotation matrix 
         """
-        raise NotImplementedError("######## Error in Trajectory.__forward_kinematics : NOT WORKING YET #########")
-        assert(len(q.shape) < 3)
-        # Compute forward kinematics for a single pair of (q, qdot)
-        if len(q.shape) == 1:
-            ee_pos = self._motion_planner.forward_kinematics(q)
-            ee_vel = None
-            if qdot is not None:
-                ee_vel = self._motion_planner.forward_velocities(q, qdot)
+        if len(q.shape) == 1: # If q is a single vector
+            return self._single_vector_forward_kinematics(q)
+        elif len(q.shape) == 2: # If q is a trajectory
+            return self._single_trajectory_forward_kinematics(q)
+        elif len(q.shape) == 3: # If q is a list of trajectories
+            return self._list_of_trajectories_forward_kinematics(q)
+        else:
+            raise ValueError("######## MotionPlanner Error : q must be a 1D, 2D or 3D np.ndarray ########")
+    
+    def _single_vector_forward_kinematics(self, q:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return self._motion_planner.forward_kinematics(q)
 
-        # Compute forward kinematics for a full trajectory of (q, qdot)
-        elif len(q.shape) == 2:
-            ee_pos = np.ndarray(shape=(q.shape[0], 3))
-            if qdot is not None:
-                ee_vel = np.ndarray(shape=(q.shape[0], 3))
-                for i, (q_i, qdot_i) in enumerate(zip(q, qdot)):
-                    ee_pos[i] = self._motion_planner.forward_kinematics(q_i)
-                    ee_vel_temp = self._motion_planner.forward_velocities(q_i, qdot_i)
-                    ee_vel[i] = ee_vel_temp[0:3] # Only keep xyz velocity
-            else:
-                ee_vel = None
-                for i, q_i in enumerate(q):
-                    ee_pos[i] = self._motion_planner.forward_kinematics(q_i)
+    def _single_trajectory_forward_kinematics(self, q:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        pos, rot = np.ndarray(shape=(q.shape[0], 3)), np.ndarray(shape=(q.shape[0], 3, 3))
+        for i, qi in enumerate(q):
+            pos[i], rot[i] = self._motion_planner.forward_kinematics(qi)
+        return pos, rot
 
-        return ee_pos, ee_vel    
+    def _list_of_trajectories_forward_kinematics(self, q:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        pos, rot = np.ndarray(shape=(q.shape[0], q.shape[1], 3)), np.ndarray(shape=(q.shape[0], q.shape[1], 3, 3))
+        for i, traj_i in enumerate(q):
+            pos[i], rot[i] = self._single_trajectory_forward_kinematics(traj_i)
+        return pos, rot
+
+    def inverse_kinematics(self, ee_pos:np.ndarray, ee_rot:np.ndarray=None) -> np.ndarray:
+        """
+        Compute the joint positions given the end-effector position.
+        _______________________________________________________________________________________________________________
+        Input :
+            ee_pos (Npts, 3) or (3)         :   np.ndarray that contains the 3D end effector position
+            ee_rot (Npts, 3, 3) or (3, 3)   :   np.ndarray that contains the end effector rotation matrix 
+        Return :
+            q (Npts, NDOF) or (NDOF)        :   np.ndarray representing the joint positions
+        """
+        if len(ee_pos.shape) == 1:
+            return self._single_vector_inverse_kinematics(ee_pos, ee_rot)
+        elif len(ee_pos.shape) == 2:
+            return self._single_trajectory_inverse_kinematics(ee_pos, ee_rot)
+        elif len(ee_pos.shape) == 3:
+            return self._list_of_trajectories_inverse_kinematics(ee_pos, ee_rot)
+        else:
+            raise ValueError("######## MotionPlanner Error : ee_pos must be a 1D, 2D or 3D np.ndarray ########")
+        
+    def _single_vector_inverse_kinematics(self, ee_pos:np.ndarray, ee_rot:np.ndarray=None) -> np.ndarray:
+        return self._motion_planner.inverse_kinematics(ee_rot, ee_pos)
+    
+    def _single_trajectory_inverse_kinematics(self, ee_pos:np.ndarray, ee_rot:np.ndarray=None) -> np.ndarray:
+        q = np.ndarray(shape=(ee_pos.shape[0], self._robot_utils.NDOF))
+        for i, (ee_pos_i, ee_rot_i) in enumerate(zip(ee_pos, ee_rot)):
+            q[i] = self._motion_planner.inverse_kinematics(ee_rot_i, ee_pos_i)
+        return q
+    
+    def _list_of_trajectories_inverse_kinematics(self, ee_pos:np.ndarray, ee_rot:np.ndarray=None) -> np.ndarray:
+        q = np.ndarray(shape=(ee_pos.shape[0], ee_pos.shape[1], self._robot_utils.NDOF))
+        for i, traj_i in enumerate(ee_pos):
+            q[i] = self._single_trajectory_inverse_kinematics(traj_i, ee_rot[i])
+        return q 
 
     def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """TODO"""

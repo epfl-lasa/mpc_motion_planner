@@ -84,13 +84,19 @@ void MotionPlanner<RobotWrapper>::set_current_state_task_space(Eigen::Vector3d p
 }
 
 template <typename RobotWrapper>
-Eigen::Matrix<double, 3, 1> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
-    return robot.forward_kinematics(q);
+std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
+    Eigen::Matrix<double, 3, 4> FK = robot.forward_kinematics(q);
+    Eigen::Matrix<double, 3, 1> position = FK.block(0,0,3,1);
+    Eigen::Matrix<double, 3, 3> orientation = FK.block(0,1,3,3);
+    return std::make_tuple(position, orientation);
 }
 
 template <typename RobotWrapper>
-Eigen::Matrix<double, 3, 1> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
-    return robot.forward_kinematics(q, frame_name);
+std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
+    Eigen::Matrix<double, 3, 4> FK = robot.forward_kinematics(q, frame_name);
+    Eigen::Matrix<double, 3, 1> position = FK.block(0,0,3,1);
+    Eigen::Matrix<double, 3, 3> orientation = FK.block(0,1,3,3);
+    return std::make_tuple(position, orientation);
 }
 
 template <typename RobotWrapper>

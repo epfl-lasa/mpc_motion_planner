@@ -24,7 +24,7 @@ Eigen::Matrix<double, 7, 1> ArmRobotWrapper::inverse_kinematic(Eigen::Matrix3d o
     const pinocchio::SE3 oMdes(orientation, position);
     
     Eigen::VectorXd q = pinocchio::randomConfiguration(model);
-    const double eps  = 1e-4;
+    const double eps  = 1e-5; // 5e-5 //1e-4;
     const int IT_MAX  = 1000;
     const double DT   = 1e-1;
     const double damp = 1e-2;
@@ -97,23 +97,25 @@ Eigen::Matrix<double, NDOF, 1> ArmRobotWrapper::inverse_velocities(Eigen::Matrix
     return joint_velocity_solution;
 }
 
-Eigen::Matrix<double, 3, 1> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
+Eigen::Matrix<double, 3, 4> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
     int frame_id_to_use = model.getFrameId(frame_name);
     pinocchio::forwardKinematics(model,data,q);
     pinocchio::updateFramePlacement(model,data,frame_id_to_use);
 
-    Eigen::MatrixXd x(3, 1); x.setZero();
+    Eigen::MatrixXd x(3, 4); x.setZero();
     x.block(0, 0, 3, 1) = data.oMf[frame_id_to_use].translation();
+    x.block(0, 1, 3, 3) = data.oMf[frame_id_to_use].rotation();
 
     return x;
 }
 
-Eigen::Matrix<double, 3, 1> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
+Eigen::Matrix<double, 3, 4> ArmRobotWrapper::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
     pinocchio::forwardKinematics(model,data,q);
     pinocchio::updateFramePlacement(model,data,frame_id);
 
-    Eigen::MatrixXd x(3, 1); x.setZero();
+    Eigen::MatrixXd x(3, 4); x.setZero();
     x.block(0, 0, 3, 1) = data.oMf[frame_id].translation();
+    x.block(0, 1, 3, 3) = data.oMf[frame_id].rotation();
 
     return x;
 }
