@@ -82,6 +82,8 @@ class MotionPlanner {
         // Set margins on top of robot constraint. Each margin is the ratio of the initial range to be kept
         void set_constraint_margins(double margin_position, double margin_velocity, double margin_acceleration, double margin_torque, double margin_jerk);
 
+        void set_acceleration_constraints(Eigen::Matrix<double, NDOF, 1> max_acceleration);
+
         void set_min_height(double min_height);
         
         // Return a random position and velocitiy within the bounds (with margin)
@@ -292,7 +294,8 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("forward_kinematics", static_cast<std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>>(MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<PandaWrapper>::forward_kinematics))
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<PandaWrapper>::forward_velocities))
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<PandaWrapper>::forward_velocities))
-        .def("inverse_kinematics", &MotionPlanner<PandaWrapper>::inverse_kinematics);
+        .def("inverse_kinematics", &MotionPlanner<PandaWrapper>::inverse_kinematics)
+        .def("set_acceleration_constraints", &MotionPlanner<PandaWrapper>::set_acceleration_constraints);
 
     py::class_<MotionPlanner<Kuka7Wrapper>>(m, "Kuka7MotionPlanner")
         .def(py::init<std::string>())
@@ -313,7 +316,8 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("forward_kinematics", static_cast<std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka7Wrapper>::forward_kinematics))
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<Kuka7Wrapper>::forward_velocities))
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka7Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka7Wrapper>::forward_velocities))
-        .def("inverse_kinematics", &MotionPlanner<Kuka7Wrapper>::inverse_kinematics);
+        .def("inverse_kinematics", &MotionPlanner<Kuka7Wrapper>::inverse_kinematics)
+        .def("set_acceleration_constraints", &MotionPlanner<Kuka7Wrapper>::set_acceleration_constraints);
 
 
     py::class_<MotionPlanner<Kuka14Wrapper>>(m, "Kuka14MotionPlanner")
@@ -335,5 +339,6 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("forward_kinematics", static_cast<std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka14Wrapper>::forward_kinematics))
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<Kuka14Wrapper>::forward_velocities))
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<Kuka14Wrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<Kuka14Wrapper>::forward_velocities))
-        .def("inverse_kinematics", &MotionPlanner<Kuka14Wrapper>::inverse_kinematics);
+        .def("inverse_kinematics", &MotionPlanner<Kuka14Wrapper>::inverse_kinematics)
+        .def("set_acceleration_constraints", &MotionPlanner<Kuka14Wrapper>::set_acceleration_constraints);
 }

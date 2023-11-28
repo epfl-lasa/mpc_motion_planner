@@ -354,7 +354,22 @@ class MotionPlanner():
 
         self._x0, self._xd = None, None
         self._info, self._cons_margins = None, CONS_MARGINS
+        self._motion_planner.set_constraint_margins(*self._cons_margins)
         #self._motion_planner.set_constraint_margins(*self._cons_margins)
+
+    def set_acceleration_constraints(self, max_acceleration:np.ndarray) -> None:
+        """
+        Set the acceleration constraints for the motion planner.
+        _______________________________________________________________________________________________________________
+        Input :
+            max_acceleration    (NDOF)  :   np.ndarray (float) containing the maximum acceleration for each joint
+        Return :
+            None
+        """
+        assert(len(max_acceleration.shape) == 1)
+        assert(max_acceleration.shape[0] == self._robot_utils.NDOF)
+        assert(np.all(max_acceleration > 0))
+        self._motion_planner.set_acceleration_constraints(max_acceleration)
 
     def set_target_state(self, xd:tuple[np.ndarray, np.ndarray, np.ndarray]) -> None:
         """
@@ -429,7 +444,7 @@ class MotionPlanner():
         """
         if self._x0 is not None and self._xd is not None:
             #print("before cons_margins")
-            self._motion_planner.set_constraint_margins(*self._cons_margins)
+            #self._motion_planner.set_constraint_margins(*self._cons_margins)
             if ruckig:
                 start = time.time()
                 self._motion_planner.solve_ruckig_trajectory()
@@ -460,7 +475,7 @@ class MotionPlanner():
             None
         """
         self._cons_margins = cons_margins
-        self._motion_planner.set_constraints_margins(*cons_margins)
+        self._motion_planner.set_constraint_margins(*cons_margins)
     
     def forward_kinematics(self, q:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -530,7 +545,7 @@ class MotionPlanner():
             q[i] = self._single_trajectory_inverse_kinematics(traj_i, ee_rot[i])
         return q 
 
-    def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False, fraction_to_use=1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """TODO"""
         # Position : rand * (ub - lb) + lb
         #print(self._robot_utils.NDOF)
@@ -557,13 +572,15 @@ class MotionPlanner():
         if acceleration_feasible_for_ruckig:
             assert False, "Not implemented yet"
 
+
+
         q = np.random.random((self._robot_utils.NDOF,))
-        q *= (xmax - xmin)
+        q *= (xmax - xmin) * fraction_to_use
         q += xmin
 
         # Velocity : rand * (ub - lb) + lb
         qdot = np.random.random((self._robot_utils.NDOF,))
-        qdot *= (vmax - vmin)
+        qdot *= (vmax - vmin) * fraction_to_use
         qdot += vmin
 
         if set_qddot_to_zero:
@@ -571,7 +588,7 @@ class MotionPlanner():
         else:
             # Acceleration : rand * (ub - lb) + lb
             qddot = np.random.random((self._robot_utils.NDOF,))
-            qddot *= (amax - amin)
+            qddot *= (amax - amin) * fraction_to_use
             qddot += amin
 
         return (q, qdot, qddot)
@@ -599,9 +616,16 @@ def reshape_traj_from_tupple_to_numpy(traj_tupple):
 
     # Adapt dimensions : Traj are stored as [Ntraj, Npts, NDOF]
     t = np.array([t])
-    q = np.array([np.swapaxes(q, 0, 1)])
-    qdot = np.array([np.swapaxes(qdot, 0, 1)])
-    qddot = np.array([np.swapaxes(qddot, 0, 1)])
-    tau = np.array([np.swapaxes(tau, 0, 1)])
+
+    if q.shape[0] < q.shape[1]:
+        q = np.array([np.swapaxes(q, 0, 1)])
+        qdot = np.array([np.swapaxes(qdot, 0, 1)])
+        qddot = np.array([np.swapaxes(qddot, 0, 1)])
+        tau = np.array([np.swapaxes(tau, 0, 1)])
+    else:
+        q = np.array([q])
+        qdot = np.array([qdot])
+        qddot = np.array([qddot])
+        tau = np.array([tau])
 
     return t, q, qdot, qddot, tau

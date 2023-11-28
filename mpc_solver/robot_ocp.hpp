@@ -163,7 +163,6 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
     pinocchio::crba(model, data, q);
     data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
 
-
     Eigen::MatrixXd djoint_torque_dtime_f = djoint_torque_dv*q_dot + djoint_torque_da*q_dot_dot;
 
 
@@ -178,7 +177,7 @@ EIGEN_STRONG_INLINE constraint_t<ad_scalar_t> evalConstraints(const Ref<const st
         // Overwitting with PINOCCHIO data
         jac_row.head(7) = djoint_torque_dq.row(i); // Replace the first 7 elements
         jac_row.segment(7, 7) = djoint_torque_dv.row(i); // Replace 7 elements, starting at pos 7
-        jac_row.segment(14, 7) = data.M.row(i); // Replace 7 elements, starting from at pos 14
+        jac_row.segment(14, 7) = data.M.row(i); // Replace 7 elements, starting from pos 14
 
         jac_row(21) = djoint_torque_dtime_f(i);
 

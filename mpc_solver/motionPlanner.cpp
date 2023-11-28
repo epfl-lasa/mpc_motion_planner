@@ -151,6 +151,13 @@ void MotionPlanner<RobotWrapper>::set_constraint_margins(double margin_position,
 }
 
 template <typename RobotWrapper>
+void MotionPlanner<RobotWrapper>::set_acceleration_constraints(Eigen::Matrix<double, NDOF, 1> max_acceleration){
+    mpc.control_bounds(-max_acceleration, max_acceleration);
+    Matrix<double, 7, 1>::Map(input.max_acceleration.data() ) = max_acceleration;
+    //std::cout << "max_acceleration: " << max_acceleration.transpose() << std::endl;
+}
+
+template <typename RobotWrapper>
 void MotionPlanner<RobotWrapper>::set_min_height(double min_height){
 
     // Non-linear torque constraints + height constraint
@@ -211,9 +218,11 @@ template <typename RobotWrapper>
 void MotionPlanner<RobotWrapper>::warm_start_RK(){
 
     // Compute Ruckig trajectory in an offline manner (outside of the control loop)
+    //std::cout << "Max acc before ruckig : " << Map<Matrix<double, NDOF, 1> >(input.max_acceleration.data()) << std::endl;
+
     Result result = otg.calculate(input, trajectory);
 
-    // std::cout << "Ruckig status: " << result << std::endl;
+    //std::cout << "Ruckig status: " << result << std::endl;
 
     mpc_t::traj_state_t x_guess;
     mpc_t::traj_control_t u_guess;
