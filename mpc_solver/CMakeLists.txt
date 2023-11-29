@@ -14,4 +14,4 @@ include_directories(../submodules/polympc/src ../robot_utils)
 
 add_library(motionPlanner motionPlanner.cpp ../robot_utils/pandaWrapper.cpp)
 target_link_libraries (motionPlanner Eigen3::Eigen pinocchio::pinocchio ruckig::ruckig)
-target_include_directories(motionPlanner PUBLIC "." "../submodules/polympc/src" "../robot_utils")
+target_include_directories(motionPlanner PUBLIC "." "../submodules/polympc/src" "../robot_utils" "../third_party")
