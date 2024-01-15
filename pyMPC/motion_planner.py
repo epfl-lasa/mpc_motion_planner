@@ -48,14 +48,9 @@ class Trajectory():
         for i, traj_i_state in enumerate(state):
             traj_i_state_cons_not_satisfied = np.logical_or(traj_i_state > limits[:, 1], traj_i_state < limits[:, 0])
             which_state_not_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied, axis=0) > np.zeros(shape=(state.shape[-1],)) # Detect which state does not satisfy cons
-            #which_joint_not_satisfied_i = np.sum(traj_i_state_cons_not_satisfied)
             traj_i_state_cons_not_satisfied = np.sum(traj_i_state_cons_not_satisfied, axis=-1)
             state_cons_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied) == 0
 
-            #if verbose:
-            #    which_joint_not_satisfied.append(traj_i_state_cons_not_satisfied)
-        
-        #print(which_state_not_satisfied)
         if verbose:
             return state_cons_satisfied, which_state_not_satisfied
     
@@ -353,13 +348,11 @@ class MotionPlanner():
             self._motion_planner = mpl.Kuka7MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
         elif robotModel == RobotModel.Kuka14:
             self._robot_utils = kuka14_utils
-            #print(self._robot_utils.MPC_ROBOT_URDF_PATH)
             self._motion_planner = mpl.Kuka14MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
 
         self._x0, self._xd = None, None
         self._info, self._cons_margins = None, CONS_MARGINS
         self._motion_planner.set_constraint_margins(*self._cons_margins)
-        #self._motion_planner.set_constraint_margins(*self._cons_margins)
 
     def set_acceleration_constraints(self, max_acceleration:np.ndarray) -> None:
         """
@@ -447,17 +440,13 @@ class MotionPlanner():
                         iterations to converge) and "time_to_solve".
         """
         if self._x0 is not None and self._xd is not None:
-            #print("before cons_margins")
-            #self._motion_planner.set_constraint_margins(*self._cons_margins)
             if ruckig:
                 start = time.time()
                 self._motion_planner.solve_ruckig_trajectory()
                 time_to_solve = time.time() - start
             else:
                 start = time.time()
-                #print("just before in py")
                 self._motion_planner.solve_trajectory(ruckig_as_warm_start, sqp_max_iter, line_search_max_iter)
-                #self._motion_planner.solve_trajectory(ruckig_as_warm_start)
                 time_to_solve = time.time() - start
 
             status, iter = self._motion_planner.get_mpc_info()
@@ -552,7 +541,7 @@ class MotionPlanner():
     def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False, fraction_to_use=1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """TODO"""
         # Position : rand * (ub - lb) + lb
-        #print(self._robot_utils.NDOF)
+
 
         if use_margins:
             safety_range_pos = (1-CONS_MARGINS[0])*(self._robot_utils.X_limits[:, 1] - self._robot_utils.X_limits[:, 0])/2
@@ -575,8 +564,6 @@ class MotionPlanner():
 
         if acceleration_feasible_for_ruckig:
             assert False, "Not implemented yet"
-
-
 
         q = np.random.random((self._robot_utils.NDOF,))
         q *= (xmax - xmin) * fraction_to_use
