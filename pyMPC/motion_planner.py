@@ -19,7 +19,6 @@ class RobotModel(enum.Enum):
     Kuka14 = 3
 
 CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
-#CONS_MARGINS = [1, 1, 1, 1, 1]
 LINE_SEARCH_MAX_ITER = 10
 SQP_MAX_ITER = 2
 
@@ -45,11 +44,16 @@ class Trajectory():
         """
         state_cons_satisfied = np.ndarray(shape=(state.shape[0]))
         which_state_not_satisfied = np.ndarray(shape=(state.shape[0], state.shape[-1]))
+        which_joint_not_satisfied = []
         for i, traj_i_state in enumerate(state):
             traj_i_state_cons_not_satisfied = np.logical_or(traj_i_state > limits[:, 1], traj_i_state < limits[:, 0])
             which_state_not_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied, axis=0) > np.zeros(shape=(state.shape[-1],)) # Detect which state does not satisfy cons
+            #which_joint_not_satisfied_i = np.sum(traj_i_state_cons_not_satisfied)
             traj_i_state_cons_not_satisfied = np.sum(traj_i_state_cons_not_satisfied, axis=-1)
             state_cons_satisfied[i] = np.sum(traj_i_state_cons_not_satisfied) == 0
+
+            #if verbose:
+            #    which_joint_not_satisfied.append(traj_i_state_cons_not_satisfied)
         
         #print(which_state_not_satisfied)
         if verbose:

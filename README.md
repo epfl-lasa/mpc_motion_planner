@@ -29,10 +29,10 @@ make
 Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`) and copy the shared object (.so file) stored in /build/mpc_solver/ and paste it within your virtual environment's site-package folder (myVenv/lib/python3.10/site-packages). You may do that using something similar to :
 
 ```
-cp build/mpc_solver/motion_planning_lib.cpython-38-x86_64-linux-gnu.so <path_to_venv>/myVenv/lib/python3.10/site-packages
+cp mpc_solver/motion_planning_lib.cpython-310-x86_64-linux-gnu.so <path_to_venv>/myVenv/lib/python3.10/site-packages
 ```
 
-If you are not using python 3.10, make sure to modify this command accordingly. Then activate your virtual environment (`source myVenv/bin/activate`) and install the requirements : 
+**If you are not using python 3.10, make sure to modify this command accordingly.** Then activate your virtual environment (`source myVenv/bin/activate`) and install the requirements : 
 
 `pip install -r requirements.txt`
 
