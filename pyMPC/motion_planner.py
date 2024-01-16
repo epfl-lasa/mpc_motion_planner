@@ -2,6 +2,7 @@ import motion_planning_lib as mpl
 import numpy as np
 import enum, time
 import os, sys
+from pathlib import Path
 
 """ CONVENTION :
 Trajectories dimensions are always in this order : (Ntraj, Npts, NDOF)
@@ -335,21 +336,37 @@ class Trajectory():
             duration[i] = t[-1] - t[0]
         return duration
 
+    @property
+    def type(self):
+        if self._ruckig:
+            return "Ruckig"
+        else:
+            return "Polympc"
+
 #----------------------------------------------------------------------------------------------#
 
 class MotionPlanner():
-    def __init__(self, robotModel):
-        """ """
-        if robotModel == RobotModel.Panda:
+    def __init__(self, robot_model):
+        """
+        Instantiate a MotionPlanner object that will be used to solve the motion planning problem.
+        _______________________________________________________________________________________________________________
+        Input :
+            robot_model    (1)  :   RobotModel (enum) that indicates which robot to use
+        Return :
+            None
+        """
+        parent_dir = Path(__file__).parent.parent
+        if robot_model == RobotModel.Panda:
             self._robot_utils = panda_utils
-            self._motion_planner = mpl.PandaMotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
-        elif robotModel == RobotModel.Kuka7:
+            self._motion_planner = mpl.PandaMotionPlanner(os.path.join(parent_dir, self._robot_utils.MPC_ROBOT_URDF_PATH))
+        elif robot_model == RobotModel.Kuka7:
             self._robot_utils = kuka7_utils
-            self._motion_planner = mpl.Kuka7MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
-        elif robotModel == RobotModel.Kuka14:
+            self._motion_planner = mpl.Kuka7MotionPlanner(os.path.join(parent_dir, self._robot_utils.MPC_ROBOT_URDF_PATH))
+        elif robot_model == RobotModel.Kuka14:
             self._robot_utils = kuka14_utils
-            self._motion_planner = mpl.Kuka14MotionPlanner(self._robot_utils.MPC_ROBOT_URDF_PATH)
+            self._motion_planner = mpl.Kuka14MotionPlanner(os.path.join(parent_dir, self._robot_utils.MPC_ROBOT_URDF_PATH))
 
+        self._robotModel = robot_model
         self._x0, self._xd = None, None
         self._info, self._cons_margins = None, CONS_MARGINS
         self._motion_planner.set_constraint_margins(*self._cons_margins)
@@ -363,6 +380,7 @@ class MotionPlanner():
         Return :
             None
         """
+        max_acceleration = max_acceleration.squeeze() # Remove useless dimensions
         assert(len(max_acceleration.shape) == 1)
         assert(max_acceleration.shape[0] == self._robot_utils.NDOF)
         assert(np.all(max_acceleration > 0))
@@ -373,12 +391,13 @@ class MotionPlanner():
         Set the target state xd = (q, dq/dt, d²q/dt²) for the motion planner to reach.
         _______________________________________________________________________________________________________________
         Input :
-            xd  (3) :   tuple of np.ndarary that contains the desired joint positions, velocities and accelerations.
+            xd  (3) :   tuple of np.ndarray that contains the desired joint positions, velocities and accelerations.
         Return :
             None
         """
         assert(len(xd) == 3)
         for xd_i in xd:
+            xd_i = xd_i.squeeze() # Remove useless dimensions
             assert(len(xd_i.shape) == 1)
             assert(xd_i.shape[0] == self._robot_utils.NDOF)
         
@@ -413,7 +432,7 @@ class MotionPlanner():
             traj    : Trajectory object that contains the desired trajectory
         """
         if self._info is None:
-            raise RuntimeError("You must have called the .solve method before calling the .get_trajectory one")
+            raise RuntimeError("You must have called the .solve() method before calling .get_trajectory()")
 
         if ruckig:
             traj = Trajectory(self._robot_utils, input_traj=self._motion_planner.get_ruckig_trajectory(), ruckig=True)
@@ -431,7 +450,7 @@ class MotionPlanner():
         trajectory does only come from ruckig.
         _______________________________________________________________________________________________________________
         Input :
-            *ruckig_as_warm_state (1)   :   bool to choose wheter or not ruckig is used as a warm start for polympc
+            *ruckig_as_warm_start (1)   :   bool to choose wheter or not ruckig is used as a warm start for polympc
             *ruckig (1)                 :   bool to choose between the polympc trajectory (ruckig=False) or the ruckig one (ruckig=True)
             *sqp_max_iter (1)           :   int to choose the max number of SQP iterations to use in polympc
             *line_search_max_iter (1)   :   int to choose the max number of line search iterations to use in polympc
@@ -480,6 +499,7 @@ class MotionPlanner():
             ee_pos (Npts, 3) or (3)         :   np.ndarray that contains the 3D end effector position
             ee_rot (Npts, 3, 3) or (3, 3)   :   np.ndarray that contains the end effector rotation matrix 
         """
+        assert q.shape[-1] == self._robot_utils.NDOF, "######## MotionPlanner Error : q must have the same number of DOF as the robot ########"
         if len(q.shape) == 1: # If q is a single vector
             return self._single_vector_forward_kinematics(q)
         elif len(q.shape) == 2: # If q is a trajectory
@@ -509,10 +529,10 @@ class MotionPlanner():
         Compute the joint positions given the end-effector position.
         _______________________________________________________________________________________________________________
         Input :
-            ee_pos (Npts, 3) or (3)         :   np.ndarray that contains the 3D end effector position
-            ee_rot (Npts, 3, 3) or (3, 3)   :   np.ndarray that contains the end effector rotation matrix 
+            ee_pos (Ntraj, Npts, 3) or (Npts, 3) or (3)             :   np.ndarray that contains the 3D end effector position
+            ee_rot (Ntraj, Npts, 3, 3) or (Npts, 3, 3) or (3, 3)    :   np.ndarray that contains the end effector rotation matrix 
         Return :
-            q (Npts, NDOF) or (NDOF)        :   np.ndarray representing the joint positions
+            q (Ntraj, Npts, NDOF) or (Npts, NDOF) or (Npts)         :   np.ndarray representing the joint positions
         """
         if len(ee_pos.shape) == 1:
             return self._single_vector_inverse_kinematics(ee_pos, ee_rot)
@@ -539,9 +559,18 @@ class MotionPlanner():
         return q 
 
     def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False, fraction_to_use=1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """TODO"""
-        # Position : rand * (ub - lb) + lb
-
+        """
+        Sample a random state within bounds.
+        _______________________________________________________________________________________________________________
+        Input :
+            *set_qddot_to_zero (bool)                   :   boolean that indicates wheter or not to set the acceleration to zero
+            *use_margins (bool)                         :   boolean that indicates wheter or not to consider the margins when sampling
+            *speed_feasible_for_ruckig (bool)           :   boolean that indicates wheter or not to consider the speed feasibility
+            *acceleration_feasible_for_ruckig (bool)    :   boolean that indicates wheter or not to consider the acceleration feasibility
+            *fraction_to_use (bool)                     :   float between 0 and 1 that indicates the fraction of the feasible state space to use
+        Return :
+            x   (3) :   tuple of np.ndarray that contains the desired joint positions, velocities and accelerations.
+        """
 
         if use_margins:
             safety_range_pos = (1-CONS_MARGINS[0])*(self._robot_utils.X_limits[:, 1] - self._robot_utils.X_limits[:, 0])/2
@@ -598,8 +627,18 @@ class MotionPlanner():
     @property
     def xd(self):
         return self._xd
+
+    @property
+    def robot_utils(self):
+        return self._robot_utils
     
-    
+    @property
+    def robot_model(self):
+        return self._robotModel
+
+    @property
+    def cons_margins(self):
+        return self._cons_margins
 #----------------------------------------------------------------------------------------------#
 
 def reshape_traj_from_tupple_to_numpy(traj_tupple):
