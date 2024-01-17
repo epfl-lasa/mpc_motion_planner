@@ -30,6 +30,8 @@ class Trajectory():
         self._utils = utils
         if input_traj is not None:
             self._t, self._q, self._qdot, self._qddot, self._tau = reshape_traj_from_tupple_to_numpy(input_traj)
+        else:
+            self._t, self._q, self._qdot, self._qddot, self._tau = None, None, None, None, None
         self._ruckig = ruckig
 
     def _state_cons_satisfied(self, state:np.ndarray, limits:np.ndarray, verbose:bool=False) -> np.ndarray:
@@ -42,6 +44,7 @@ class Trajectory():
         Return :
             state_cons_satisfied    (Ntraj) :   np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not constraints are satisfied.
+        _______________________________________________________________________________________________________________
         """
         state_cons_satisfied = np.ndarray(shape=(state.shape[0]))
         which_state_not_satisfied = np.ndarray(shape=(state.shape[0], state.shape[-1]))
@@ -66,6 +69,7 @@ class Trajectory():
         Return :
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint position constraints are satisfied.
+        _______________________________________________________________________________________________________________
         """
         return self._state_cons_satisfied(self._q, self._utils.X_limits, verbose=verbose)
 
@@ -78,6 +82,7 @@ class Trajectory():
         Return :
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint velocity constraints are satisfied.
+        _______________________________________________________________________________________________________________
         """
         return self._state_cons_satisfied(self._qdot, self._utils.V_limits, verbose=verbose)
 
@@ -90,6 +95,7 @@ class Trajectory():
         Return :
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint acceleration constraints are satisfied.
+        _______________________________________________________________________________________________________________
         """
         return self._state_cons_satisfied(self._qddot, self._utils.A_limits, verbose=verbose)
 
@@ -102,6 +108,7 @@ class Trajectory():
         Return :
             _state_cons_satisfied    (Ntraj) :  np.ndarray (bool) containing a boolean that indicates
                                                 wheter or not joint torque constraints are satisfied.
+        _______________________________________________________________________________________________________________
         """
         T_limits = np.ndarray(shape=(self._tau.shape[-1], 2))
         T_limits[:, 0] = -self._utils.T_limits
@@ -145,6 +152,7 @@ class Trajectory():
             t   (Ntraj, NPTS)  :    np.ndarray (float) containing the time steps for each trajectory
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         self._t = t
 
@@ -156,6 +164,7 @@ class Trajectory():
             q   (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint positions for each trajectory
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         self._q = q
 
@@ -167,6 +176,7 @@ class Trajectory():
             qdot    (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint velocities for each trajectory
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         self._qdot = qdot
 
@@ -178,6 +188,7 @@ class Trajectory():
             qddot   (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint accelerations for each trajectory
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         self._qddot = qddot
 
@@ -189,6 +200,7 @@ class Trajectory():
             tau (Ntraj, NPTS, NDOF) :   np.ndarray (float) containing the joint torques for each trajectory
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         self._tau = tau
 
@@ -200,6 +212,7 @@ class Trajectory():
             slice (1)   : str or int, that specifies which value to access
         Return :
             -           : np.ndarray (float), the desired value specified by <slice>  
+        _______________________________________________________________________________________________________________
         """
         if isinstance(slice, str):
             if slice=="t":
@@ -230,14 +243,19 @@ class Trajectory():
             other : Trajectory object
         Return :
             result : Trajectory object that contains both <self> and <other>  
+        _______________________________________________________________________________________________________________
         """
         assert isinstance(other, Trajectory)
-        assert(self._t.shape[1] == other._t.shape[1])
-        t = np.concatenate((self._t, other.t), axis=0)
-        q = np.concatenate((self._q, other.q), axis=0)
-        qdot = np.concatenate((self._qdot, other.qdot), axis=0)
-        qddot = np.concatenate((self._qddot, other.qddot), axis=0)
-        tau = np.concatenate((self._tau, other.tau), axis=0)
+        if self._t is not None:
+            assert(self._t.shape[1] == other._t.shape[1])
+            t = np.concatenate((self._t, other.t), axis=0)
+            q = np.concatenate((self._q, other.q), axis=0)
+            qdot = np.concatenate((self._qdot, other.qdot), axis=0)
+            qddot = np.concatenate((self._qddot, other.qddot), axis=0)
+            tau = np.concatenate((self._tau, other.tau), axis=0)
+
+        else:
+            t, q, qdot, qddot, tau  = other.t, other.q, other.qdot, other.qddot, other.tau
 
         result = Trajectory(self._utils, ruckig=self._ruckig)
         result._set_t(t)
@@ -256,6 +274,7 @@ class Trajectory():
             None
         Return :
             len (1) :   Number of concatenated trajectories
+        _______________________________________________________________________________________________________________
         """
         return self._t.shape[0]
 
@@ -354,6 +373,7 @@ class MotionPlanner():
             robot_model    (1)  :   RobotModel (enum) that indicates which robot to use
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         parent_dir = Path(__file__).parent.parent
         if robot_model == RobotModel.Panda:
@@ -379,6 +399,7 @@ class MotionPlanner():
             max_acceleration    (NDOF)  :   np.ndarray (float) containing the maximum acceleration for each joint
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         max_acceleration = max_acceleration.squeeze() # Remove useless dimensions
         assert(len(max_acceleration.shape) == 1)
@@ -394,6 +415,7 @@ class MotionPlanner():
             xd  (3) :   tuple of np.ndarray that contains the desired joint positions, velocities and accelerations.
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         assert(len(xd) == 3)
         for xd_i in xd:
@@ -412,6 +434,7 @@ class MotionPlanner():
             x0  (3) :   tuple of np.ndarary that contains the current joint positions, velocities and accelerations.
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         assert len(x0) == 3, "x0 should be a 3D-tuple!"
         for x0_i in x0:
@@ -430,6 +453,7 @@ class MotionPlanner():
             *ruckig  (1) :  bool to choose between the polympc trajectory (ruckig=False) or the ruckig one (ruckig=True)
         Return :
             traj    : Trajectory object that contains the desired trajectory
+        _______________________________________________________________________________________________________________
         """
         if self._info is None:
             raise RuntimeError("You must have called the .solve() method before calling .get_trajectory()")
@@ -457,6 +481,7 @@ class MotionPlanner():
         Return :
             info    :   dictionnary with fields "status" (1 if polympc converged, 0 otherwise), "iter" (number of sqp
                         iterations to converge) and "time_to_solve".
+        _______________________________________________________________________________________________________________
         """
         if self._x0 is not None and self._xd is not None:
             if ruckig:
@@ -485,6 +510,7 @@ class MotionPlanner():
                                     jerk
         Return :
             None
+        _______________________________________________________________________________________________________________
         """
         self._cons_margins = cons_margins
         self._motion_planner.set_constraint_margins(*cons_margins)
@@ -497,7 +523,8 @@ class MotionPlanner():
             q (Npts, NDOF) or (NDOF)    :   np.ndarray representing the joint positions
         Return :
             ee_pos (Npts, 3) or (3)         :   np.ndarray that contains the 3D end effector position
-            ee_rot (Npts, 3, 3) or (3, 3)   :   np.ndarray that contains the end effector rotation matrix 
+            ee_rot (Npts, 3, 3) or (3, 3)   :   np.ndarray that contains the end effector rotation matrix
+        _______________________________________________________________________________________________________________    
         """
         assert q.shape[-1] == self._robot_utils.NDOF, "######## MotionPlanner Error : q must have the same number of DOF as the robot ########"
         if len(q.shape) == 1: # If q is a single vector
@@ -533,6 +560,7 @@ class MotionPlanner():
             ee_rot (Ntraj, Npts, 3, 3) or (Npts, 3, 3) or (3, 3)    :   np.ndarray that contains the end effector rotation matrix 
         Return :
             q (Ntraj, Npts, NDOF) or (Npts, NDOF) or (Npts)         :   np.ndarray representing the joint positions
+        _______________________________________________________________________________________________________________
         """
         if len(ee_pos.shape) == 1:
             return self._single_vector_inverse_kinematics(ee_pos, ee_rot)
@@ -558,7 +586,7 @@ class MotionPlanner():
             q[i] = self._single_trajectory_inverse_kinematics(traj_i, ee_rot[i])
         return q 
 
-    def sample_state(self, set_qddot_to_zero=False, use_margins=True, speed_feasible_for_ruckig=False, acceleration_feasible_for_ruckig=False, fraction_to_use=1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def sample_state(self, N:int=1, set_qddot_to_zero:bool=False, use_margins:bool=True, speed_feasible_for_ruckig:bool=False, acceleration_feasible_for_ruckig:bool=False, fraction_to_use=1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Sample a random state within bounds.
         _______________________________________________________________________________________________________________
@@ -570,7 +598,9 @@ class MotionPlanner():
             *fraction_to_use (bool)                     :   float between 0 and 1 that indicates the fraction of the feasible state space to use
         Return :
             x   (3) :   tuple of np.ndarray that contains the desired joint positions, velocities and accelerations.
+        _______________________________________________________________________________________________________________
         """
+        assert N>=1, "######## MotionPlanner Error : N must be greater or equal to 1 ########"
 
         if use_margins:
             safety_range_pos = (1-CONS_MARGINS[0])*(self._robot_utils.X_limits[:, 1] - self._robot_utils.X_limits[:, 0])/2
@@ -594,25 +624,87 @@ class MotionPlanner():
         if acceleration_feasible_for_ruckig:
             assert False, "Not implemented yet"
 
-        q = np.random.random((self._robot_utils.NDOF,))
+        q = np.random.random((N, self._robot_utils.NDOF))
         q *= (xmax - xmin) * fraction_to_use
         q += xmin
 
         # Velocity : rand * (ub - lb) + lb
-        qdot = np.random.random((self._robot_utils.NDOF,))
+        qdot = np.random.random((N, self._robot_utils.NDOF))
         qdot *= (vmax - vmin) * fraction_to_use
         qdot += vmin
 
         if set_qddot_to_zero:
-            qddot = np.zeros((self._robot_utils.NDOF,))
+            qddot = np.zeros((N, self._robot_utils.NDOF))
         else:
             # Acceleration : rand * (ub - lb) + lb
-            qddot = np.random.random((self._robot_utils.NDOF,))
+            qddot = np.random.random((N, self._robot_utils.NDOF))
             qddot *= (amax - amin) * fraction_to_use
             qddot += amin
 
+        if N == 1:
+            return (q.squeeze(), qdot.squeeze(), qddot.squeeze())
+
         return (q, qdot, qddot)
     
+    def solve_and_get_batch_of_traj(self, x0:tuple[np.ndarray, np.ndarray, np.ndarray], xd:tuple[np.ndarray, np.ndarray, np.ndarray], ruckig_as_warm_start:bool=True, ruckig:bool=False, sqp_max_iter:int=SQP_MAX_ITER, line_search_max_iter:int=LINE_SEARCH_MAX_ITER) -> tuple[np.ndarray, list[dict]]:
+        """
+        With default arguments, solves the polympc problem using ruckig as a warm start for a batch of initial conditions.
+        If x0 and xd contain N boundary conditions, then the output will be a batch of N trajectories.
+        _______________________________________________________________________________________________________________
+        Input :
+            x0 (3)                      :   tuple of np.ndarray that contains (initial positions, initial velocities, initial accelerations). 
+            xd (3)                      :   tuple of np.ndarray that contains (final positions, final velocities, final accelerations). 
+            *ruckig_as_warm_start (1)   :   bool to choose wheter or not ruckig is used as a warm start for polympc
+            *ruckig (1)                 :   bool to choose between the polympc trajectory (ruckig=False) or the ruckig one (ruckig=True)
+            *sqp_max_iter (1)           :   int to choose the max number of SQP iterations to use in polympc
+            *line_search_max_iter (1)   :   int to choose the max number of line search iterations to use in polympc
+        Return :
+            info    :   dictionnary with fields "status" (1 if polympc converged, 0 otherwise), "iter" (number of sqp
+                        iterations to converge) and "time_to_solve".
+        _______________________________________________________________________________________________________________
+        """
+
+        # Assert input is a tuple of length 3 (q, qdot, qddot)
+        assert isinstance(x0, tuple) and len(x0) == 3, "######## MotionPlanner Error : x0 must be a 3D-tuple ########"
+        assert isinstance(xd, tuple) and len(xd) == 3, "######## MotionPlanner Error : xd must be a 3D-tuple ########"
+
+        if len(x0[0].shape) == 1: # Means that x0 contains a single initial state, not a list of initial states -> q in R^NDOF
+            assert len(xd[0].shape) == 1, "######## MotionPlanner Error : q0 and qd must have the same number of dimensions ########"
+            x0 = tuple([np.array([x0[i]]) for i in range(3)])
+            xd = tuple([np.array([xd[i]]) for i in range(3)])
+        elif len(x0[0].shape) == 2: # Means that x0 contains a list of initial states -> q in R^(Ntraj x NDOF)
+            assert len(xd[0].shape) == 2, "######## MotionPlanner Error : q0 and qd must have the same number of dimensions ########"
+            assert xd[0].shape[0] == x0[0].shape[0], "######## MotionPlanner Error : q0 and qd must have the same number of trajectories ########"
+        else:
+            raise ValueError("######## MotionPlanner Error : x0 and xd must be 1D or 2D np.ndarray ########")
+
+        # Assert that each state has the same number of DOF as the robot
+        assert xd[0].shape[-1] == self._robot_utils.NDOF, "######## MotionPlanner Error : qd must have the same number of DOF as the robot ########"
+        assert x0[0].shape[-1] == self._robot_utils.NDOF, "######## MotionPlanner Error : q0 must have the same number of DOF as the robot ########"
+
+        batch_of_traj = Trajectory(self._robot_utils) # Create a Trajectory object to store multiple trajectories
+
+        # Get the initial and target states
+        q0, qdot0, qddot0 = x0
+        qd, qdotd, qddotd = xd
+
+        info = []
+        # For each initial and target state, solve the problem, store the trajectory and the info
+        for q0_i, qdot0_i, qddot0_i, qd_i, qdotd_i, qddotd_i in zip(q0, qdot0, qddot0, qd, qdotd, qddotd):
+            # Set the initial and target state
+            self.set_current_state((q0_i, qdot0_i, qddot0_i))
+            self.set_target_state((qd_i, qdotd_i, qddotd_i))
+
+            # Solve the problem
+            info_i = self.solve(ruckig_as_warm_start=ruckig_as_warm_start, ruckig=ruckig, sqp_max_iter=sqp_max_iter, line_search_max_iter=line_search_max_iter)
+            info.append(info_i)
+
+            # Get the trajectory and add it to the batch
+            traj_i = self.get_trajectory(ruckig=ruckig)
+            batch_of_traj += traj_i
+
+        return batch_of_traj, info
+
     @property
     def info(self):
         if self._info is not None:
