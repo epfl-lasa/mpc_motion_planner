@@ -1,4 +1,4 @@
-import motion_planning_lib as mpl
+import mpc_solver.motion_planning_lib as mpl
 import numpy as np
 import enum, time
 import os, sys

@@ -17,7 +17,7 @@ We use [polyMPC](https://gitlab.epfl.ch/listov/polympc) as the MPC library and [
 Clone the repository with the submodules, then compile the examples:
 
 ```
-git clone --recurse-submodules --branch python_binding https://github.com/epfl-lasa/mpc_motion_planner.git 
+git clone --recurse-submodules --branch bindings_ruckig_included https://github.com/epfl-lasa/mpc_motion_planner.git 
 
 cd mpc_motion_planner && mkdir build && cd build
 cmake ..
@@ -26,10 +26,10 @@ make
 
 ### Install python library
 
-Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`) and copy the shared object (.so file) stored in /build/mpc_solver/ and paste it within your virtual environment's site-package folder (myVenv/lib/python3.10/site-packages). You may do that using something similar to :
+Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`) and copy the folder mpc_motion_planner/build/mpc_solver/ and paste it within your virtual environment's site-package folder (myVenv/lib/python3.10/site-packages). You may do that using something similar to :
 
 ```
-cp mpc_solver/motion_planning_lib.cpython-310-x86_64-linux-gnu.so <path_to_venv>/myVenv/lib/python3.10/site-packages
+cp mpc_solver <path_to_venv>/myVenv/lib/python3.10/site-packages
 ```
 
 **If you are not using python 3.10, make sure to modify this command accordingly.** Then activate your virtual environment (`source myVenv/bin/activate`) and install the requirements : 
