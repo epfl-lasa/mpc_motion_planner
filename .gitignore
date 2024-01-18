@@ -14,7 +14,6 @@ learning_meaningful_metrics
 learning_feasibility
 pyMPC/descriptions
 pyMPC/dist
-pyMPC/setup.py
 pyMPC/build
 pyMPC/pyMPC.egg-info
 pyMPC/debug.py
