@@ -8,7 +8,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(pinocchio REQUIRED)
-find_package(ruckig REQUIRED)
+#find_package(ruckig REQUIRED)
 #find_package(pybind11 REQUIRED)  # Required for creating Python bindings
 #find_package(PythonLibs REQUIRED)
 
