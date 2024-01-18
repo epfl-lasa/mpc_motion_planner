@@ -26,13 +26,13 @@ make
 
 ### Install python library
 
-Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`) and copy the folder mpc_motion_planner/build/mpc_solver/ and paste it within your virtual environment's site-package folder (myVenv/lib/python3.10/site-packages). You may do that using something similar to :
+Create a virtual environment, for instance **myVenv** (`python3 -m venv myVenv`), active it (`source myVenv/bin/activate`) and run the mpc_motion_planner/pyMPC/setup.py file.
 
 ```
-cp mpc_solver <path_to_venv>/myVenv/lib/python3.10/site-packages
+cd .. && python3 pyMPC/setup.py 
 ```
 
-**If you are not using python 3.10, make sure to modify this command accordingly.** Then activate your virtual environment (`source myVenv/bin/activate`) and install the requirements : 
+Then install the requirements : 
 
 `pip install -r requirements.txt`
 
