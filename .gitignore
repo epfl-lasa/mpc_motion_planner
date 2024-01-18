@@ -1,6 +1,7 @@
 build
 .vscode
 .venv
+.venv_without_ruckig
 results_images
 optimal_solution.txt
 benchmark_mpc_vh
