@@ -9,7 +9,7 @@ Trajectories dimensions are always in this order : (Ntraj, Npts, NDOF)
 Where Ntraj is the number of different trajectories, Npts is the number of time-steps and NDOF the number of degrees of freedom
 """
 
-sys.path.append(os.path.join(os.getcwd(), '../'))
+sys.path.append(str(Path(__file__).parent.parent))
 import descriptions.robot_descriptions.franka_panda_bullet.franka_panda as panda_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 as kuka7_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_14 as kuka14_utils

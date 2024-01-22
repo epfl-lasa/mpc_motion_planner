@@ -39,9 +39,7 @@ Then install the requirements :
 To use the library within your project, write at the top of it:
 
 ```
-import sys
-sys.path.append("/<path_to>/mpc_motion_planner")
-from pyMPC.motion_planner import MotionPlanner, Trajectory, RobotModel
+from mpc_solver.pyMPC.motion_planner import MotionPlanner, Trajectory, RobotModel
 ```
 
 A [Jupyter Notebook](pyMPC/howToUse.ipynb) presents the main features of the library and how to use it.
