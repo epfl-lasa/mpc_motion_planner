@@ -1,4 +1,4 @@
-import shutil, site, os, pathlib
+import shutil, site, pathlib
 
 site_pkg = site.getsitepackages()[0]
 mpc_motion_planner_path = str(pathlib.Path(__file__).parent.parent)
