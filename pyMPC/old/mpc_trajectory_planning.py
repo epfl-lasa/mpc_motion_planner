@@ -40,6 +40,8 @@ if ROBOT_MODEL=="PANDA":
     from descriptions.robot_descriptions.franka_panda_bullet.franka_panda import *
     #print(ROBOT_URDF_PATH)
     #print(MPC_ROBOT_URDF_PATH)
+elif ROBOT_MODEL=="NEURA":
+    from descriptions.robot_descriptions.neura_model.neura_maira import *
 elif ROBOT_MODEL=="KUKA7":
     from descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 import *
 elif ROBOT_MODEL=="KUKA14":
@@ -105,7 +107,7 @@ def setup_motion_planner(robotModel, q0=None, q0_dot=None, q0_ddot=None, robot_u
     ____________________________________________________________________________________________________________________
 
     INPUT PARAMETERS ---------------------------------------------------------------------------------------------------
-        | robotModel          :   string describing the robot model : "PANDA" , "KUKA7", "KUKA14"
+        | robotModel          :   string describing the robot model : "PANDA", "NEURA", "KUKA7", "KUKA14"
         | q0                  :   initial joint configuration as numpy array
         * q0_dot              :   initial joint velocity as numpy array
         * q0_ddot             :   initial joint acceleration as numpy array
@@ -131,6 +133,12 @@ def setup_motion_planner(robotModel, q0=None, q0_dot=None, q0_ddot=None, robot_u
         else:
             #print(robot_urdf_path)
             mpc_planner = mpl.PandaMotionPlanner(robot_urdf_path)
+
+    elif robotModel=="NEURA":
+        if robot_urdf_path is None:
+            mpc_planner = mpl.NeuraMotionPlanner(ROBOT_URDF_PATH)
+        else:
+            mpc_planner = mpl.NeuraMotionPlanner(robot_urdf_path)
 
     elif robotModel=="KUKA7":
         if robot_urdf_path is None:

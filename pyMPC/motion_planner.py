@@ -11,6 +11,7 @@ Where Ntraj is the number of different trajectories, Npts is the number of time-
 
 sys.path.append(str(Path(__file__).parent.parent))
 import descriptions.robot_descriptions.franka_panda_bullet.franka_panda as panda_utils
+import descriptions.robot_descriptions.neura_model.neura_maira as neura_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_7 as kuka7_utils
 import descriptions.robot_descriptions.Kuka_iiwa7_and_14_models.kuka_iiwa_14 as kuka14_utils
 
@@ -18,6 +19,7 @@ class RobotModel(enum.Enum):
     Panda = 1
     Kuka7 = 2
     Kuka14 = 3
+    Neura = 4
 
 CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
 LINE_SEARCH_MAX_ITER = 10
@@ -379,6 +381,9 @@ class MotionPlanner():
         if robot_model == RobotModel.Panda:
             self._robot_utils = panda_utils
             self._motion_planner = mpl.PandaMotionPlanner(os.path.join(parent_dir, self._robot_utils.MPC_ROBOT_URDF_PATH))
+        elif robot_model == RobotModel.Neura:
+            self._robot_utils = neura_utils
+            self._motion_planner = mpl.NeuraMotionPlanner(os.path.join(parent_dir, self._robot_utils.MPC_ROBOT_URDF_PATH))
         elif robot_model == RobotModel.Kuka7:
             self._robot_utils = kuka7_utils
             self._motion_planner = mpl.Kuka7MotionPlanner(os.path.join(parent_dir, self._robot_utils.MPC_ROBOT_URDF_PATH))

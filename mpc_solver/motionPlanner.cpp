@@ -326,6 +326,7 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
 
 
 template class MotionPlanner<PandaWrapper>;
+template class MotionPlanner<NeuraWrapper>;
 template class MotionPlanner<Kuka7Wrapper>;
 template class MotionPlanner<Kuka14Wrapper>;
 

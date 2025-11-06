@@ -7,6 +7,7 @@
 
 
 #include "pandaWrapper.hpp"
+#include "neuraWrapper.hpp"
 #include "kuka7Wrapper.hpp"
 #include "kuka14Wrapper.hpp"
 #include "armRobotWrapper.hpp"
@@ -296,6 +297,28 @@ PYBIND11_MODULE(motion_planning_lib, m) {
         .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<PandaWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<PandaWrapper>::forward_velocities))
         .def("inverse_kinematics", &MotionPlanner<PandaWrapper>::inverse_kinematics)
         .def("set_acceleration_constraints", &MotionPlanner<PandaWrapper>::set_acceleration_constraints);
+        
+    py::class_<MotionPlanner<NeuraWrapper>>(m, "NeuraMotionPlanner")
+        .def(py::init<std::string>())
+        .def("set_target_state", &MotionPlanner<NeuraWrapper>::set_target_state)
+        .def("set_current_state", &MotionPlanner<NeuraWrapper>::set_current_state)
+        .def("set_constraint_margins", &MotionPlanner<NeuraWrapper>::set_constraint_margins)
+        .def("set_min_height", &MotionPlanner<NeuraWrapper>::set_min_height)
+        .def("check_state_in_bounds", &MotionPlanner<NeuraWrapper>::check_state_in_bounds)
+        .def("solve_trajectory", static_cast<void (MotionPlanner<NeuraWrapper>::*)(bool, int, int)>(&MotionPlanner<NeuraWrapper>::solve_trajectory))
+        .def("solve_trajectory", static_cast<void (MotionPlanner<NeuraWrapper>::*)(bool)>(&MotionPlanner<NeuraWrapper>::solve_trajectory))
+        .def("solve_ruckig_trajectory", &MotionPlanner<NeuraWrapper>::warm_start_RK)
+        .def("get_mpc_info", &MotionPlanner<NeuraWrapper>::get_mpc_info)
+        .def("get_ruckig_trajectory", &MotionPlanner<NeuraWrapper>::get_ruckig_trajectory_wrapper<100>)
+        .def("get_MPC_trajectory", &MotionPlanner<NeuraWrapper>::get_MPC_trajectory_wrapper<100>)
+        .def("set_target_state_task_space", &MotionPlanner<NeuraWrapper>::set_target_state_task_space)
+        .def("set_current_state_task_space", &MotionPlanner<NeuraWrapper>::set_current_state_task_space)
+        .def("forward_kinematics", static_cast<std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>>(MotionPlanner<NeuraWrapper>::*)(Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<NeuraWrapper>::forward_kinematics))
+        .def("forward_kinematics", static_cast<std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>>(MotionPlanner<NeuraWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<NeuraWrapper>::forward_kinematics))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<NeuraWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>)>(&MotionPlanner<NeuraWrapper>::forward_velocities))
+        .def("forward_velocities", static_cast<Eigen::Matrix<double, 6, 1> (MotionPlanner<NeuraWrapper>::*)(Eigen::Matrix<double, NDOF, 1>, Eigen::Matrix<double, NDOF, 1>, std::string)>(&MotionPlanner<NeuraWrapper>::forward_velocities))
+        .def("inverse_kinematics", &MotionPlanner<NeuraWrapper>::inverse_kinematics)
+        .def("set_acceleration_constraints", &MotionPlanner<NeuraWrapper>::set_acceleration_constraints);
 
     py::class_<MotionPlanner<Kuka7Wrapper>>(m, "Kuka7MotionPlanner")
         .def(py::init<std::string>())
