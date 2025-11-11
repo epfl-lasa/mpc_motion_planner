@@ -21,7 +21,8 @@ class RobotModel(enum.Enum):
     Kuka14 = 3
     Neura = 4
 
-CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1]
+CONS_MARGINS = [0.9, 0.9, 0.9, 0.9, 0.3]
+# CONS_MARGINS = [0.9, 0.9, 0.4, 0.7, 0.1] # TODO
 LINE_SEARCH_MAX_ITER = 10
 SQP_MAX_ITER = 2
 

@@ -1,21 +1,22 @@
 #include "motionPlanner.hpp"
 
 template <typename RobotWrapper>
-MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
-//MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
+MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path) : robot(urdf_path), mpc()
+{
+    // MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_path), mpc(){
 
-    Matrix<double, NDOF, 1> default_position = (robot.max_position.array() + robot.min_position.array())/2;
+    Matrix<double, NDOF, 1> default_position = (robot.max_position.array() + robot.min_position.array()) / 2;
 
     set_target_state(default_position, Matrix<double, NDOF, 1>::Zero());
     set_current_state(default_position, Matrix<double, NDOF, 1>::Zero());
 
     // ---------- PolyMPC setup ---------- //
-    
-    //std::cout << "link name in Motion planner constructor " << robot.ee_link_name << std::endl;
+
+    // std::cout << "link name in Motion planner constructor " << robot.ee_link_name << std::endl;
     mpc.ocp().init(urdf_path, robot.ee_link_name);
 
     // Solver settings
-    mpc.settings().max_iter = 1000; //2; 
+    mpc.settings().max_iter = 1000; // 2;
     mpc.qp_settings().max_iter = 700;
     mpc.settings().line_search_max_iter = 10;
     mpc.set_time_limits(0, 1);
@@ -28,7 +29,8 @@ MotionPlanner<RobotWrapper>::MotionPlanner(std::string urdf_path): robot(urdf_pa
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_target_state(Matrix<double, NDOF, 1> target_position, Matrix<double, NDOF, 1> target_velocity, Matrix<double, NDOF, 1> target_acceleration){
+void MotionPlanner<RobotWrapper>::set_target_state(Matrix<double, NDOF, 1> target_position, Matrix<double, NDOF, 1> target_velocity, Matrix<double, NDOF, 1> target_acceleration)
+{
 
     // Update MPC constraints
     target_state.head(7) = target_position;
@@ -37,13 +39,14 @@ void MotionPlanner<RobotWrapper>::set_target_state(Matrix<double, NDOF, 1> targe
     mpc.final_state_bounds(target_state.array() - eps, target_state.array() + eps);
 
     // Update Ruckig constraints
-    Matrix<double, 7, 1>::Map(input.target_position.data() ) = target_position;
-    Matrix<double, 7, 1>::Map(input.target_velocity.data() ) = target_velocity;
-    Matrix<double, 7, 1>::Map(input.target_acceleration.data() ) = target_acceleration;
+    Matrix<double, 7, 1>::Map(input.target_position.data()) = target_position;
+    Matrix<double, 7, 1>::Map(input.target_velocity.data()) = target_velocity;
+    Matrix<double, 7, 1>::Map(input.target_acceleration.data()) = target_acceleration;
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_target_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity){
+void MotionPlanner<RobotWrapper>::set_target_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity)
+{
     Matrix<double, NDOF, 1> q_des;
     Matrix<double, NDOF, 1> qdot_des;
 
@@ -55,8 +58,9 @@ void MotionPlanner<RobotWrapper>::set_target_state_task_space(Eigen::Vector3d po
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_current_state(Matrix<double, NDOF, 1> current_position, Matrix<double, NDOF, 1> current_velocity, Matrix<double, NDOF, 1> current_acceleration){
-    
+void MotionPlanner<RobotWrapper>::set_current_state(Matrix<double, NDOF, 1> current_position, Matrix<double, NDOF, 1> current_velocity, Matrix<double, NDOF, 1> current_acceleration)
+{
+
     // Update MPC constraints
     current_state.head(7) = current_position;
     current_state.tail(7) = current_velocity;
@@ -64,19 +68,20 @@ void MotionPlanner<RobotWrapper>::set_current_state(Matrix<double, NDOF, 1> curr
     mpc.initial_conditions(current_state);
 
     // Update Ruckig constraints
-    Matrix<double, 7, 1>::Map(input.current_position.data() ) = current_position;
-    Matrix<double, 7, 1>::Map(input.current_velocity.data() ) = current_velocity;
-    Matrix<double, 7, 1>::Map(input.current_acceleration.data() ) = current_acceleration;
+    Matrix<double, 7, 1>::Map(input.current_position.data()) = current_position;
+    Matrix<double, 7, 1>::Map(input.current_velocity.data()) = current_velocity;
+    Matrix<double, 7, 1>::Map(input.current_acceleration.data()) = current_acceleration;
     // std::cout << 'setting acc ' << current_acceleration.transpose() << std::endl; ;
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_current_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity){
-    
+void MotionPlanner<RobotWrapper>::set_current_state_task_space(Eigen::Vector3d position, Eigen::Matrix3d orientation, Eigen::Vector3d linear_velocity, Eigen::Vector3d angular_velocity)
+{
+
     Eigen::Matrix<double, NDOF, 1> q_curr;
     Eigen::Matrix<double, NDOF, 1> qdot_curr;
 
-    // Compute inverse kinematic 
+    // Compute inverse kinematic
     q_curr = robot.inverse_kinematic(orientation, position);
     qdot_curr = robot.inverse_velocities(q_curr, linear_velocity, angular_velocity);
 
@@ -84,38 +89,44 @@ void MotionPlanner<RobotWrapper>::set_current_state_task_space(Eigen::Vector3d p
 }
 
 template <typename RobotWrapper>
-std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q){
+std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q)
+{
     Eigen::Matrix<double, 3, 4> FK = robot.forward_kinematics(q);
-    Eigen::Matrix<double, 3, 1> position = FK.block(0,0,3,1);
-    Eigen::Matrix<double, 3, 3> orientation = FK.block(0,1,3,3);
+    Eigen::Matrix<double, 3, 1> position = FK.block(0, 0, 3, 1);
+    Eigen::Matrix<double, 3, 3> orientation = FK.block(0, 1, 3, 3);
     return std::make_tuple(position, orientation);
 }
 
 template <typename RobotWrapper>
-std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name){
+std::tuple<Eigen::Matrix<double, 3, 1>, Eigen::Matrix<double, 3, 3>> MotionPlanner<RobotWrapper>::forward_kinematics(Eigen::Matrix<double, NDOF, 1> q, std::string frame_name)
+{
     Eigen::Matrix<double, 3, 4> FK = robot.forward_kinematics(q, frame_name);
-    Eigen::Matrix<double, 3, 1> position = FK.block(0,0,3,1);
-    Eigen::Matrix<double, 3, 3> orientation = FK.block(0,1,3,3);
+    Eigen::Matrix<double, 3, 1> position = FK.block(0, 0, 3, 1);
+    Eigen::Matrix<double, 3, 3> orientation = FK.block(0, 1, 3, 3);
     return std::make_tuple(position, orientation);
 }
 
 template <typename RobotWrapper>
-Eigen::Matrix<double, 6, 1> MotionPlanner<RobotWrapper>::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot){
+Eigen::Matrix<double, 6, 1> MotionPlanner<RobotWrapper>::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot)
+{
     return robot.forward_velocities(q, qdot);
 }
 
 template <typename RobotWrapper>
-Eigen::Matrix<double, 6, 1> MotionPlanner<RobotWrapper>::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name){
+Eigen::Matrix<double, 6, 1> MotionPlanner<RobotWrapper>::forward_velocities(Eigen::Matrix<double, NDOF, 1> q, Eigen::Matrix<double, NDOF, 1> qdot, std::string frame_name)
+{
     return robot.forward_velocities(q, qdot, frame_name);
 }
 
 template <typename RobotWrapper>
-Eigen::Matrix<double, NDOF, 1> MotionPlanner<RobotWrapper>::inverse_kinematics(Eigen::Matrix3d orientation, Eigen::Vector3d position){
+Eigen::Matrix<double, NDOF, 1> MotionPlanner<RobotWrapper>::inverse_kinematics(Eigen::Matrix3d orientation, Eigen::Vector3d position)
+{
     return robot.inverse_kinematic(orientation, position);
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_constraint_margins(double margin_position, double margin_velocity, double margin_acceleration, double margin_torque, double margin_jerk){
+void MotionPlanner<RobotWrapper>::set_constraint_margins(double margin_position, double margin_velocity, double margin_acceleration, double margin_torque, double margin_jerk)
+{
 
     // Save margins
     this->margin_position_ = margin_position;
@@ -124,148 +135,162 @@ void MotionPlanner<RobotWrapper>::set_constraint_margins(double margin_position,
     this->margin_torque_ = margin_torque;
     this->margin_jerk_ = margin_jerk;
 
-
     // ---------- MPC constraints ---------- //
 
     // State constraints ---------------
-    Matrix<double, 7, 1> safety_range_position = (1-margin_position_)*(robot.max_position.array() - robot.min_position.array())/2; // needed because position bounds are not symmetric
-    mpc_t::state_t lbx; lbx << robot.min_position + safety_range_position, -margin_velocity*robot.max_velocity;
-    mpc_t::state_t ubx; ubx << robot.max_position - safety_range_position, margin_velocity*robot.max_velocity;
+    Matrix<double, 7, 1> safety_range_position = (1 - margin_position_) * (robot.max_position.array() - robot.min_position.array()) / 2; // needed because position bounds are not symmetric
+    mpc_t::state_t lbx;
+    lbx << robot.min_position + safety_range_position, -margin_velocity * robot.max_velocity;
+    mpc_t::state_t ubx;
+    ubx << robot.max_position - safety_range_position, margin_velocity * robot.max_velocity;
     mpc.state_bounds(lbx, ubx);
 
     // Input constraints -------------
-    mpc.control_bounds(-margin_acceleration*robot.max_acceleration, margin_acceleration*robot.max_acceleration);  
-    
+    mpc.control_bounds(-margin_acceleration * robot.max_acceleration, margin_acceleration * robot.max_acceleration);
+
     // Parameters ------------------
-    mpc_t::parameter_t lbp; lbp << 0.0;  // lower bound on time
-    mpc_t::parameter_t ubp; ubp << 10;   // upper bound on time
+    mpc_t::parameter_t lbp;
+    lbp << 0.0; // lower bound on time
+    mpc_t::parameter_t ubp;
+    ubp << 10; // upper bound on time
     mpc.parameters_bounds(lbp, ubp);
 
     // Non-linear torque constraints + height constraint
-    set_min_height(robot.min_height);                            // set_min_height(robot.min_height);
+    set_min_height(robot.min_height); // set_min_height(robot.min_height);
 
     // ---------- Ruckig constraints ---------- //
-    Matrix<double, 7, 1>::Map(input.max_velocity.data() ) = margin_velocity*robot.max_velocity;
-    Matrix<double, 7, 1>::Map(input.max_acceleration.data() ) = margin_acceleration*robot.max_acceleration;
-    Matrix<double, 7, 1>::Map(input.max_jerk.data() ) = margin_jerk*robot.max_jerk;
+    Matrix<double, 7, 1>::Map(input.max_velocity.data()) = margin_velocity * robot.max_velocity;
+    Matrix<double, 7, 1>::Map(input.max_acceleration.data()) = margin_acceleration * robot.max_acceleration;
+    Matrix<double, 7, 1>::Map(input.max_jerk.data()) = margin_jerk * robot.max_jerk;
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_acceleration_constraints(Eigen::Matrix<double, NDOF, 1> max_acceleration){
+void MotionPlanner<RobotWrapper>::set_acceleration_constraints(Eigen::Matrix<double, NDOF, 1> max_acceleration)
+{
     mpc.control_bounds(-max_acceleration, max_acceleration);
-    Matrix<double, 7, 1>::Map(input.max_acceleration.data() ) = max_acceleration;
-    //std::cout << "max_acceleration: " << max_acceleration.transpose() << std::endl;
+    Matrix<double, 7, 1>::Map(input.max_acceleration.data()) = max_acceleration;
+    // std::cout << "max_acceleration: " << max_acceleration.transpose() << std::endl;
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::set_min_height(double min_height){
+void MotionPlanner<RobotWrapper>::set_min_height(double min_height)
+{
 
     // Non-linear torque constraints + height constraint
-    mpc_t::constraint_t lbg; lbg << -this->margin_torque_*robot.max_torque, min_height; //, -robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
-    mpc_t::constraint_t ubg; ubg <<  this->margin_torque_*robot.max_torque, inf; //, robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
+    mpc_t::constraint_t lbg;
+    lbg << -this->margin_torque_ * robot.max_torque, min_height; //, -robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
+    mpc_t::constraint_t ubg;
+    ubg << this->margin_torque_ * robot.max_torque, inf; //, robot.max_linear_velocity * robot.max_linear_velocity * 0.2;
     mpc.constraints_bounds(lbg, ubg);
 
-    //std::cout << lbg.transpose() << std::endl;
+    // std::cout << lbg.transpose() << std::endl;
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::sample_random_state(Matrix<double, 7, 1> &random_position, Matrix<double, 7, 1> &random_velocity){
-    
-    Matrix<double, 7, 1> safety_range_position = (1-margin_position_)*(robot.max_position.array() - robot.min_position.array())/2;
+void MotionPlanner<RobotWrapper>::sample_random_state(Matrix<double, 7, 1> &random_position, Matrix<double, 7, 1> &random_velocity)
+{
 
-    do {
-    random_position = 0.5*(Matrix<double, 7, 1>::Random().array()*(robot.max_position - robot.min_position - 2*safety_range_position).array() 
-                                                                + (robot.max_position + robot.min_position).array() );
-    pinocchio::forwardKinematics(robot.model, robot.data, random_position);
-    } 
-    while (robot.data.oMi[7].translation()[2]< robot.min_height);
+    Matrix<double, 7, 1> safety_range_position = (1 - margin_position_) * (robot.max_position.array() - robot.min_position.array()) / 2;
 
-    random_velocity = margin_velocity_*Matrix<double, 7, 1>::Random().array()*robot.max_velocity.array();
+    do
+    {
+        random_position = 0.5 * (Matrix<double, 7, 1>::Random().array() * (robot.max_position - robot.min_position - 2 * safety_range_position).array() + (robot.max_position + robot.min_position).array());
+        pinocchio::forwardKinematics(robot.model, robot.data, random_position);
+    } while (robot.data.oMi[7].translation()[2] < robot.min_height);
+
+    random_velocity = margin_velocity_ * Matrix<double, 7, 1>::Random().array() * robot.max_velocity.array();
 }
 
 template <typename RobotWrapper>
-int MotionPlanner<RobotWrapper>::check_state_in_bounds(Matrix<double, 7, 1> &position, Matrix<double, 7, 1> &velocity, Matrix<double, 7, 1> acceleration){
+int MotionPlanner<RobotWrapper>::check_state_in_bounds(Matrix<double, 7, 1> &position, Matrix<double, 7, 1> &velocity, Matrix<double, 7, 1> acceleration)
+{
 
-    Matrix<double, 7, 1> safety_range_position = (1-margin_position_)*(robot.max_position.array() - robot.min_position.array())/2;
+    Matrix<double, 7, 1> safety_range_position = (1 - margin_position_) * (robot.max_position.array() - robot.min_position.array()) / 2;
 
-    bool position_check = ( position.array() > (robot.max_position - safety_range_position).array() ).any()
-                       || ( position.array() < (robot.min_position + safety_range_position).array() ).any() ;
+    bool position_check = (position.array() > (robot.max_position - safety_range_position).array()).any() || (position.array() < (robot.min_position + safety_range_position).array()).any();
 
+    bool velocity_check = (velocity.array().abs() > margin_velocity_ * robot.max_velocity.array()).any();
 
-    bool velocity_check = ( velocity.array().abs() > margin_velocity_*robot.max_velocity.array() ).any();
+    bool acceleration_check = (acceleration.array().abs() > margin_acceleration_ * robot.max_acceleration.array()).any();
 
-    bool acceleration_check = ( acceleration.array().abs() > margin_acceleration_*robot.max_acceleration.array() ).any();
-    
     // By default: no problem
     int check_flag = 0;
 
     // Position outside bounds
-    if (position_check && !velocity_check) check_flag = 1;
+    if (position_check && !velocity_check)
+        check_flag = 1;
 
     // Velocity outside bounds
-    if (!position_check && velocity_check) check_flag = 2;
+    if (!position_check && velocity_check)
+        check_flag = 2;
 
     // Position and velocity outside bounds
-    if (position_check && velocity_check) check_flag = 3;
+    if (position_check && velocity_check)
+        check_flag = 3;
 
     // Acceleration outside bounds
-    if (acceleration_check) check_flag += 10;
+    if (acceleration_check)
+        check_flag += 10;
 
     return check_flag;
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::warm_start_RK(){
+void MotionPlanner<RobotWrapper>::warm_start_RK()
+{
 
     // Compute Ruckig trajectory in an offline manner (outside of the control loop)
-    //std::cout << "Max acc before ruckig : " << Map<Matrix<double, NDOF, 1> >(input.max_acceleration.data()) << std::endl;
+    // std::cout << "Max acc before ruckig : " << Map<Matrix<double, NDOF, 1> >(input.max_acceleration.data()) << std::endl;
 
     Result result = otg.calculate(input, trajectory);
 
-    //std::cout << "Ruckig status: " << result << std::endl;
+    // std::cout << "Ruckig status: " << result << std::endl;
 
     mpc_t::traj_state_t x_guess;
     mpc_t::traj_control_t u_guess;
-    mpc_t::parameter_t p0; p0 << trajectory.get_duration();
+    mpc_t::parameter_t p0;
+    p0 << trajectory.get_duration();
     std::array<double, NDOF> new_position, new_velocity, new_acceleration;
 
     auto mpc_time_grid = mpc.ocp().time_nodes;
     int i = 0;
-    for(auto mpc_time : mpc_time_grid){
+    for (auto mpc_time : mpc_time_grid)
+    {
 
-        trajectory.at_time(mpc_time*trajectory.get_duration(), new_position, new_velocity, new_acceleration);
+        trajectory.at_time(mpc_time * trajectory.get_duration(), new_position, new_velocity, new_acceleration);
 
-        x_guess.segment(i*NDOF*2, NDOF*2) << Map<Matrix<double, NDOF, 1> >(new_position.data()),
-                                                Map<Matrix<double, NDOF, 1> >(new_velocity.data());
+        x_guess.segment(i * NDOF * 2, NDOF * 2) << Map<Matrix<double, NDOF, 1>>(new_position.data()),
+            Map<Matrix<double, NDOF, 1>>(new_velocity.data());
 
-        u_guess.segment(i*NDOF, NDOF) << Map<Matrix<double, NDOF, 1> >(new_acceleration.data());
+        u_guess.segment(i * NDOF, NDOF) << Map<Matrix<double, NDOF, 1>>(new_acceleration.data());
 
         i++;
-    } 
+    }
     /*
     std::cout << x_guess << std::endl << x_guess.cols() << " " << x_guess.rows() << std::endl;
     std::cout << x_guess.reshaped(14, 13)  << std::endl;
     std::cout << u_guess.reshaped(7, 13)  << std::endl;
     */
-    mpc.x_guess(x_guess);	
+    mpc.x_guess(x_guess);
     mpc.u_guess(u_guess);
-    mpc.p_guess(p0); 
-
+    mpc.p_guess(p0);
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start){
+void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start)
+{
 
-     // Warm start with ruckig if needed
-    if (use_ruckig_as_warm_start) warm_start_RK();
+    // Warm start with ruckig if needed
+    if (use_ruckig_as_warm_start)
+        warm_start_RK();
 
     auto start = std::chrono::system_clock::now();
 
-    mpc.solve(); 
+    mpc.solve();
 
     auto stop = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    double dT = duration.count()*1e-3;
+    double dT = duration.count() * 1e-3;
 
     /** retrieve solution and statistics */
 
@@ -274,11 +299,9 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
     std::cout << "Num iterations: " << mpc.info().iter << "\n";
     std::cout << "Solve time: " << dT << " [ms] \n";
     */
-    //std::cout << "Final time: " << mpc.solution_p().transpose() << std::endl;
-    
-    
-    //std::cout << "-------------\n";
-    
+    // std::cout << "Final time: " << mpc.solution_p().transpose() << std::endl;
+
+    // std::cout << "-------------\n";
 
     // Fix initial and final point at correct place
     mpc_t::traj_state_t x_guess;
@@ -286,30 +309,31 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
     x_guess.head(mpc_t::nx) = current_state;
     x_guess.tail(mpc_t::nx) = target_state;
 
-    mpc.x_guess(x_guess);	
+    mpc.x_guess(x_guess);
     mpc.u_guess(mpc.solution_u());
     mpc.p_guess(mpc.solution_p());
-
 }
 
 template <typename RobotWrapper>
-void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start, int sqp_max_iter, int line_search_max_iter_in){
+void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start, int sqp_max_iter, int line_search_max_iter_in)
+{
 
-     // Warm start with ruckig if needed
-    if (use_ruckig_as_warm_start) warm_start_RK();
+    // Warm start with ruckig if needed
+    if (use_ruckig_as_warm_start)
+        warm_start_RK();
 
     mpc.settings().line_search_max_iter = line_search_max_iter_in;
     mpc.settings().max_iter = sqp_max_iter;
 
     auto start = std::chrono::system_clock::now();
 
-    //std::cout << "Before mpc.solve()" << std::endl;
-    mpc.solve(); 
-    //std::cout << "After mpc.solve()" << std::endl;
+    // std::cout << "Before mpc.solve()" << std::endl;
+    mpc.solve();
+    // std::cout << "After mpc.solve()" << std::endl;
 
     auto stop = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    double dT = duration.count()*1e-3;
+    double dT = duration.count() * 1e-3;
 
     // Fix initial and final point at correct place
     mpc_t::traj_state_t x_guess;
@@ -317,16 +341,12 @@ void MotionPlanner<RobotWrapper>::solve_trajectory(bool use_ruckig_as_warm_start
     x_guess.head(mpc_t::nx) = current_state;
     x_guess.tail(mpc_t::nx) = target_state;
 
-    mpc.x_guess(x_guess);	
+    mpc.x_guess(x_guess);
     mpc.u_guess(mpc.solution_u());
     mpc.p_guess(mpc.solution_p());
-
 }
-
-
 
 template class MotionPlanner<PandaWrapper>;
 template class MotionPlanner<NeuraWrapper>;
 template class MotionPlanner<Kuka7Wrapper>;
 template class MotionPlanner<Kuka14Wrapper>;
-
